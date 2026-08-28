@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BBI Portfolio Risk Scanner V2.5.1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#17202a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111827;color:#fff;padding:22px 16px}h1{margin:0;font-size:25px}.sub{margin-top:6px;opacity:.72;font-size:13px}
+main{max-width:980px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 2px 12px #0001}
+h2{margin:0 0 17px;font-size:20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 18px}.field{min-width:0}
+label{display:block;margin:0 0 7px;font-size:13px;font-weight:700;color:#56616d}
+input,select{display:block;width:100%;height:48px;padding:0 13px;border:1px solid #cbd3dc;border-radius:11px;background:#fff;color:#17202a;font:inherit}
+input[readonly]{background:#f3f5f7;color:#17202a;font-weight:650}
+button{width:100%;height:48px;border:0;border-radius:11px;background:#166534;color:#fff;font:inherit;font-weight:700;cursor:pointer;margin-top:12px}
+.blue{background:#1d4ed8}.secondary{background:#e9edf1;color:#17202a}.dangerBtn{background:#b91c1c}.ghost{background:#fff;color:#1d4ed8;border:1px solid #1d4ed8}
+.status{padding:13px;border-radius:12px;margin-top:14px;font-size:14px;line-height:1.45}.info{background:#eaf2ff}.ok{background:#e9f7ef}.warn{background:#fff6df}.danger{background:#fdeaea}
+.step{display:inline-block;background:#111827;color:#fff;border-radius:99px;padding:4px 9px;font-size:12px;margin-right:7px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi{padding:15px;border-radius:14px;background:#f6f7f9;text-align:center}.kpi .n{font-size:25px;font-weight:800}.kpi small{color:#667}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 6px;border-bottom:1px solid #e1e5e9}.right{text-align:right}
+.rowactions{display:flex;gap:7px;justify-content:flex-end}.rowactions button{width:auto;height:36px;margin:0;padding:0 10px;font-size:12px}
+.empty{text-align:center;color:#667;padding:20px}.note{font-size:13px;color:#667}.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef2f7;font-size:12px;font-weight:700}
+.match{padding:12px;border-radius:12px;margin-bottom:10px;background:#f6f7f9}.green{color:#166534}.orange{color:#9a6700}
+.bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:5px}.bar span{display:block;height:100%;background:#111827}
+.small{font-size:12px;color:#667}hr{border:0;border-top:1px solid #e5e7eb;margin:18px 0}
+.drop{border:2px dashed #b9c3cf;border-radius:16px;padding:22px;text-align:center;background:#fafbfc}.drop input{height:auto;border:0;padding:10px;background:transparent}
+.preview{max-height:260px;max-width:100%;margin-top:12px;border-radius:12px}.mono{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;white-space:pre-wrap;max-height:180px;overflow:auto;background:#f7f8fa;padding:12px;border-radius:10px}
+@media(max-width:760px){.grid,.kpis{grid-template-columns:1fr}.card{padding:15px}.hideMobile{display:none}}
+</style>
+<!-- Browser-side OCR libraries. On GitHub Pages they are loaded from CDN; manual entry still works if offline. -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<header><h1>BBI Portfolio Risk Scanner</h1><div class="sub">V2.5.1 · Kennungsbasierte Wertpapiererkennung · Dokument-/Foto-Upload · Fonds-Look-through</div></header>
+<main>
+
+<section class="card">
+<h2><span class="step">1</span>Depot-Stammdaten</h2>
+<div class="grid">
+<div class="field"><label>Depotinhaber</label><input id="owner" placeholder="Vorname Nachname"></div>
+<div class="field"><label>Depotbezeichnung</label><input id="depot" placeholder="z. B. Privatdepot"></div>
+<div class="field"><label>Depotführender Anbieter / Bank / Neobroker</label><input id="provider" placeholder="z. B. Bank, Neobroker"></div>
+<div class="field"><label>Depotart</label><select id="depotType"><option>Bankdepot</option><option>Neobroker</option><option>Fondsdepot</option><option>Versicherung / Depotmantel</option><option>Sonstiges</option></select></div>
+<div class="field"><label>Depotnummer (optional)</label><input id="depotno" placeholder="z. B. ****1234"></div>
+<div class="field"><label>Stichtag</label><input id="date" type="date"></div>
+</div>
+</section>
+
+<section class="card">
+<h2><span class="step">2</span>Dokument / Foto automatisch erfassen</h2>
+<div class="drop">
+<strong>Depotunterlage hier auswählen</strong>
+<div class="note">Foto, Screenshot oder PDF · iPad-Kamera und Dateien werden unterstützt.</div>
+<input id="fileInput" type="file" accept="image/*,.pdf">
+</div>
+<div id="fileInfo" class="status info">Noch keine Datei ausgewählt.</div>
+<img id="preview" class="preview" hidden>
+<button class="blue" id="ocrBtn" onclick="runOCR()" disabled>Dokument analysieren</button>
+<div id="ocrStatus"></div>
+<div id="ocrText" class="mono" hidden></div>
+<div id="scanCandidates"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">3</span>Kapitalzufluss auf Depotebene</h2>
+<div class="grid">
+<div class="field"><label>Regelmäßige Einzahlung ins Depot?</label><select id="depositYes"><option>Nein</option><option>Ja</option></select></div>
+<div class="field"><label>Einzahlungsbetrag (€)</label><input id="depositAmount" type="number" min="0" step="0.01"></div>
+<div class="field"><label>Intervall</label><select id="depositInterval"><option>monatlich</option><option>vierteljährlich</option><option>halbjährlich</option><option>jährlich</option><option>unregelmäßig</option></select></div>
+<div class="field"><label>Herkunft / Zweck (optional)</label><input id="depositNote" placeholder="z. B. Gehalt, Altersvorsorge"></div>
+</div>
+<div id="depositStatus" class="status info">Kein regelmäßiger Depotzufluss angegeben.</div>
+</section>
+
+<section class="card">
+<h2><span class="step">4</span>Position hinzufügen</h2>
+<div class="grid">
+<div class="field"><label>ISIN / WKN / Symbol <span class="small">(Primärschlüssel)</span></label><input id="isin" placeholder="z. B. DK2J9F oder LU1508359509" oninput="lookupIdentifier()"></div>
+<div class="field"><label>Wertpapier / Asset <span class="small">(automatisch)</span></label><input id="name" readonly placeholder="Wird anhand der Kennung ermittelt"></div>
+<div class="field"><label>Vermögensklasse</label><select id="asset"><option>Fonds / ETF</option><option>Aktie</option><option>Anleihe</option><option>Kryptowährung</option><option>Cash</option><option>Sonstiges</option></select></div>
+<div class="field"><label>Anbieter / Verwahrer</label><input id="custodian" placeholder="Bank, Neobroker, Börse, Wallet"></div>
+<div class="field"><label>Stückzahl / Menge</label><input id="units" type="number" min="0" step="any"></div>
+<div class="field"><label>Wert zum Stichtag (€)</label><input id="value" type="number" min="0" step="0.01"></div>
+</div>
+<div id="lookupStatus" class="status info">Bitte ISIN, WKN oder Symbol eingeben. Der Name wird automatisch ermittelt.</div>
+<hr>
+<div class="grid">
+<div class="field"><label>Sparplan für diese Position?</label><select id="savingYes"><option>Nein</option><option>Ja</option></select></div>
+<div class="field"><label>Sparrate (€)</label><input id="savingRate" type="number" min="0" step="0.01"></div>
+<div class="field"><label>Sparplan-Intervall</label><select id="savingInterval"><option>monatlich</option><option>vierteljährlich</option><option>halbjährlich</option><option>jährlich</option><option>unregelmäßig</option></select></div>
+<div class="field"><label>Nächste Ausführung (optional)</label><input id="savingNext" type="date"></div>
+</div>
+<button id="saveBtn" onclick="savePosition()">Position übernehmen</button><div id="msg"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">5</span>Erfasste Positionen</h2>
+<div class="kpis">
+<div class="kpi"><div class="n" id="total">0 €</div><small>Kapitalbestand</small></div>
+<div class="kpi"><div class="n" id="count">0</div><small>Positionen</small></div>
+<div class="kpi"><div class="n" id="monthlyFlow">0 €</div><small>Sparrate / Monat</small></div>
+<div class="kpi"><div class="n" id="annualFlow">0 €</div><small>Kapitalzufluss / Jahr</small></div>
+</div>
+<table><thead><tr><th>Asset</th><th>ISIN/Symbol</th><th>Klasse</th><th class="hideMobile">Wert</th><th class="hideMobile">Sparplan</th><th class="right">Aktion</th></tr></thead>
+<tbody id="rows"></tbody></table>
+</section>
+
+<section class="card">
+<h2><span class="step">6</span>Wertpapieridentifikation</h2>
+<div class="note">Die Kennung ist der Primärschlüssel. Der angezeigte Name kommt aus dem Stammdatensatz und ist nicht frei editierbar.</div>
+<button class="blue" onclick="runIdentification()">Alle Positionen prüfen</button>
+<div id="identResults"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">7</span>Fonds-Look-through & Top 10</h2>
+<div id="analysisStatus" class="status info">Analyse noch nicht gestartet.</div>
+<button class="blue" onclick="runAnalysis()">Look-through analysieren</button>
+<div id="analysis"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">8</span>Depotstatus</h2>
+<div id="ready" class="status info">Noch keine vollständige Erfassung.</div>
+</section>
+</main>
+
+<script>
+const FUND_DB={"DE000DK0ECU8":{"name":"Deka-GlobalChampions CF","wkn":"DK0ECU","aliases":["deka-globalchampions cf"],"asof":"31.07.2026","holdings":[["Microsoft",6.3],["Apple",5.6],["NVIDIA",5.5],["Alphabet",5.4],["Amazon",4.9],["Broadcom",3.8],["Taiwan Semiconductor",3.1],["Samsung Electronics",3.0],["Meta Platforms",2.4],["JPMorgan",2.2]]},"LU0703710904":{"name":"Deka-ESG Aktien CF (A)","wkn":"DK1A47","aliases":["deka-nachhaltigkeit aktien cf","deka-nachhaltigkeit aktien cf (a)","deka-esg aktien cf"],"asof":"31.07.2026","holdings":[["Apple",7.4],["NVIDIA",6.7],["Alphabet",5.5],["Microsoft",4.1],["Amazon",3.1],["Broadcom",2.5],["JPMorgan",1.8],["Meta Platforms",1.7],["Tesla",1.4],["Eli Lilly",1.4]]},"LU1508359509":{"name":"Deka-Industrie 4.0 CF","wkn":"DK2J9F","aliases":["deka-industrie 4.0 cf","deka industrie 4.0 cf"],"asof":"31.07.2026","holdings":[["Amazon",7.0],["NVIDIA",6.2],["ASML",6.0],["Alphabet",5.8],["Taiwan Semiconductor",5.7],["Keyence",3.8],["Palo Alto Networks",3.1],["Samsung Electronics",2.3],["Meta Platforms",2.1],["Eli Lilly",1.8]]}};
+const MASTER={"DK0ECU":{"isin":"DE000DK0ECU8","name":"Deka-GlobalChampions CF","type":"Fonds / ETF"},"DK1A47":{"isin":"LU0703710904","name":"Deka-ESG Aktien CF (A)","type":"Fonds / ETF"},"DK2J9F":{"isin":"LU1508359509","name":"Deka-Industrie 4.0 CF","type":"Fonds / ETF"},"AAPL":{"isin":"US0378331005","name":"Apple Inc.","type":"Aktie"},"NVDA":{"isin":"US67066G1040","name":"NVIDIA Corp.","type":"Aktie"},"MSFT":{"isin":"US5949181045","name":"Microsoft Corp.","type":"Aktie"},"AMZN":{"isin":"US0231351067","name":"Amazon.com Inc.","type":"Aktie"},"GOOGL":{"isin":"US02079K3059","name":"Alphabet Inc. Class A","type":"Aktie"}};
+let positions=[],editIndex=-1,identified={};
+let selectedFile=null,ocrBusy=false;
+const $=id=>document.getElementById(id);
+
+$("date").value=new Date().toISOString().slice(0,10);
+
+function norm(s){return String(s||"").toLowerCase().replace(/[–—]/g,"-").replace(/\(a\)/g,"").replace(/[^a-z0-9]+/g," ").trim()}
+function factor(i){return {monatlich:12,vierteljährlich:4,halbjährlich:2,jährlich:1,unregelmäßig:0}[i]||0}
+function euro(v){return Number(v||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+
+function lookupIdentifier(){
+ const raw=$("isin").value.trim().toUpperCase();
+ $("name").value=""; $("lookupStatus").className="status info";
+ if(!raw){$("lookupStatus").textContent="Bitte ISIN, WKN oder Symbol eingeben. Der Name wird automatisch ermittelt.";return}
+ let rec=MASTER[raw];
+ if(!rec){
+   const byIsin=Object.values(MASTER).find(x=>x.isin===raw);
+   if(byIsin)rec=byIsin;
+ }
+ if(rec){
+   $("name").value=rec.name;
+   $("asset").value=rec.type;
+   $("lookupStatus").className="status ok";
+   $("lookupStatus").innerHTML="✓ Wertpapier eindeutig erkannt. <strong>"+esc(rec.name)+"</strong> wurde automatisch aus der Kennung übernommen.";
+ }else{
+   $("lookupStatus").className="status warn";
+   $("lookupStatus").innerHTML="🟡 Kennung noch nicht im Prototyp-Stammsatz. In der Produktionsversion wird hier die externe Wertpapierdatenbank abgefragt.";
+ }
+}
+
+function resolveFund(p){
+ const key=(p.isin||"").trim().toUpperCase();
+ if(FUND_DB[key])return {canonical:key,record:FUND_DB[key],reason:"ISIN-Match"};
+ for(const [id,f] of Object.entries(FUND_DB)){
+   if(String(f.wkn).toUpperCase()===key)return {canonical:id,record:f,reason:"WKN-Match"};
+   if(f.aliases.some(a=>norm(a)===norm(p.name)))return {canonical:id,record:f,reason:"Name aus Stammdaten"};
+ }
+ return null;
+}
+
+function savePosition(){
+ const raw=$("isin").value.trim().toUpperCase(), masterRec=MASTER[raw]||Object.values(MASTER).find(x=>x.isin===raw);
+ const name=masterRec?masterRec.name:$("name").value.trim();
+ const p={asset:$("asset").value,isin:raw,name:name,custodian:$("custodian").value.trim()||"—",units:+$("units").value||0,value:+$("value").value||0,
+          saving:$("savingYes").value==="Ja",rate:+$("savingRate").value||0,interval:$("savingInterval").value,next:$("savingNext").value};
+ if(!p.isin||p.value<=0){$("msg").innerHTML='<div class="status danger">Bitte ISIN/WKN/Symbol und Wert größer 0 eingeben.</div>';return}
+ if(!name){$("msg").innerHTML='<div class="status danger">Das Wertpapier konnte nicht identifiziert werden. Bitte erst eine bekannte Kennung verwenden oder die Stammdaten später auflösen.</div>';return}
+ if(p.saving&&p.rate<=0){$("msg").innerHTML='<div class="status danger">Bei einem Sparplan bitte eine Sparrate eingeben.</div>';return}
+ if(editIndex>=0){positions[editIndex]=p;editIndex=-1;$("msg").innerHTML='<div class="status ok">✓ Position geändert.</div>'}
+ else{positions.push(p);$("msg").innerHTML='<div class="status ok">✓ Position übernommen.</div>'}
+ clearForm();render();updateReady();
+}
+function editPosition(i){
+ const p=positions[i];editIndex=i;
+ $("isin").value=p.isin;lookupIdentifier();$("asset").value=p.asset;$("custodian").value=p.custodian;$("units").value=p.units;$("value").value=p.value;
+ $("savingYes").value=p.saving?"Ja":"Nein";$("savingRate").value=p.rate||"";$("savingInterval").value=p.interval||"monatlich";$("savingNext").value=p.next||"";
+ $("saveBtn").textContent="Position ändern";$("msg").innerHTML='<div class="status warn">Bearbeitungsmodus aktiv.</div>';
+ window.scrollTo({top:document.querySelectorAll(".card")[3].offsetTop-10,behavior:"smooth"});
+}
+function removePosition(i){if(!confirm("Position wirklich löschen?"))return;positions.splice(i,1);editIndex=-1;render();updateReady()}
+function clearForm(){["isin","name","custodian","units","value","savingRate","savingNext"].forEach(id=>$(id).value="");$("savingYes").value="Nein";$("savingInterval").value="monatlich";$("saveBtn").textContent="Position übernehmen";$("lookupStatus").className="status info";$("lookupStatus").textContent="Bitte ISIN, WKN oder Symbol eingeben. Der Name wird automatisch ermittelt."}
+
+function render(){
+ const total=positions.reduce((a,p)=>a+p.value,0),monthly=positions.reduce((a,p)=>a+(p.saving&&p.interval==="monatlich"?p.rate:0),0),annual=positions.reduce((a,p)=>a+(p.saving?p.rate*factor(p.interval):0),0);
+ $("total").textContent=euro(total);$("count").textContent=positions.length;$("monthlyFlow").textContent=euro(monthly);$("annualFlow").textContent=euro(annual);
+ $("rows").innerHTML=positions.length?positions.map((p,i)=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.isin)}</td><td><span class="pill">${esc(p.asset)}</span></td><td class="hideMobile">${euro(p.value)}</td><td class="hideMobile">${p.saving?euro(p.rate)+" / "+esc(p.interval):"—"}</td><td class="right"><div class="rowactions"><button class="secondary" onclick="editPosition(${i})">✎ Bearbeiten</button><button class="dangerBtn" onclick="removePosition(${i})">×</button></div></td></tr>`).join(""):'<tr><td colspan="6" class="empty">Noch keine Positionen.</td></tr>';
+}
+
+function runIdentification(){
+ identified={};let out="";
+ if(!positions.length){$("identResults").innerHTML='<div class="status warn">Bitte zuerst Positionen erfassen.</div>';return}
+ positions.forEach((p,i)=>{
+   const r=resolveFund(p);
+   if(r){identified[i]=r.canonical;out+=`<div class="match"><b>${esc(p.name)}</b><div><span class="green">✓ Eindeutig identifiziert</span> · ${esc(r.record.name)} · ISIN <b>${r.canonical}</b> · WKN ${r.record.wkn}</div><div class="small">Erkennung: ${r.reason} · Holdings-Datenstand: ${r.record.asof}</div></div>`}
+   else if(MASTER[p.isin])out+=`<div class="match"><b>${esc(p.name)}</b><div><span class="green">✓ Wertpapier-Stammdaten vorhanden</span> · ${esc(MASTER[p.isin].name)}</div><div class="small">Keine Fonds-Look-through-Daten für diesen Titel im Prototyp.</div></div>`;
+   else out+=`<div class="match"><b>${esc(p.name)}</b><div class="orange">🟡 Identifikation ausstehend</div><div class="small">Keine eindeutige Übereinstimmung im lokalen Prototyp-Stammsatz.</div></div>`;
+ });
+ $("identResults").innerHTML=out;$("analysisStatus").textContent="Identifikation durchgeführt. Look-through kann gestartet werden.";
+}
+
+function runAnalysis(){
+ if(!positions.length){$("analysis").innerHTML='<div class="status warn">Bitte zuerst Positionen erfassen.</div>';return}
+ if(Object.keys(identified).length===0)runIdentification();
+ const agg={},src={};
+ positions.forEach((p,i)=>{
+   const f=identified[i]?FUND_DB[identified[i]]:null;
+   if(f)f.holdings.forEach(([name,pct])=>{agg[name]=(agg[name]||0)+p.value*pct/100;src[name]=(src[name]||[]).concat([p.name])});
+   else if(p.asset==="Aktie") {agg[p.name]=(agg[p.name]||0)+p.value;src[p.name]=(src[p.name]||[]).concat(["Direktanlage"])}
+ });
+ const total=positions.reduce((a,p)=>a+p.value,0),covered=Object.values(agg).reduce((a,b)=>a+b,0);
+ const top=Object.entries(agg).map(([name,value])=>({name,value,pct:total?value/total*100:0,sources:[...new Set(src[name]||[])]})).sort((a,b)=>b.value-a.value).slice(0,10);
+ $("analysisStatus").className="status ok";$("analysisStatus").innerHTML=`✓ Look-through abgeschlossen · ${top.length} Top-Titel · ${euro(covered)} erkannte Durchschau (${total?((covered/total)*100).toFixed(1):"0.0"} % des Depots).`;
+ $("analysis").innerHTML=top.length?`<div style="margin-top:16px"><table><thead><tr><th>#</th><th>Aktientitel</th><th>konsolidierter Wert</th><th>Anteil Depot</th><th>Herkunft</th></tr></thead><tbody>${top.map((e,i)=>`<tr><td><b>${i+1}</b></td><td><b>${esc(e.name)}</b><div class="bar"><span style="width:${Math.min(e.pct*5,100)}%"></span></div></td><td>${euro(e.value)}</td><td>${e.pct.toFixed(2)} %</td><td class="small">${e.sources.map(esc).join("<br>")}</td></tr>`).join("")}</tbody></table></div><div class="status warn">V2.5 nutzt für den Prototyp die drei hinterlegten Deka-Fonds. Produktionsversion benötigt eine laufend aktualisierte Holdings-Datenquelle.</div>`:'<div class="empty">Keine Look-through-Daten vorhanden.</div>';
+}
+
+function updateReady(){
+ const yes=$("depositYes").value==="Ja",a=+$("depositAmount").value||0,f=factor($("depositInterval").value);
+ $("depositStatus").className="status "+(yes?"ok":"info");
+ $("depositStatus").innerHTML=yes?(a?`✓ Depotzufluss: <strong>${euro(a)} / ${$("depositInterval").value}</strong> · Jahreswert: <strong>${euro(a*f)}</strong>`:"Bitte Einzahlungsbetrag ergänzen."):"Kein regelmäßiger Depotzufluss angegeben.";
+ const ok=$("owner").value.trim()&&$("provider").value.trim()&&positions.length>0;
+ $("ready").className="status "+(ok?"ok":"info");
+ $("ready").innerHTML=ok?"<strong>✓ Erfassung vollständig genug für den Analysebaustein.</strong><br>Identifikation und Look-through können ausgeführt werden.":"Noch keine vollständige Erfassung. Mindestens Depotinhaber, Depotführer und eine Position werden benötigt.";
+}
+
+/* ---------- Document/photo upload + browser-side OCR ---------- */
+$("fileInput").addEventListener("change",e=>{
+ selectedFile=e.target.files&&e.target.files[0];
+ if(!selectedFile)return;
+ $("fileInfo").className="status ok";
+ $("fileInfo").innerHTML=`✓ Datei ausgewählt: <strong>${esc(selectedFile.name)}</strong> · ${(selectedFile.size/1024/1024).toFixed(2)} MB`;
+ $("ocrBtn").disabled=false;
+ if(selectedFile.type.startsWith("image/")){
+   const url=URL.createObjectURL(selectedFile);$("preview").src=url;$("preview").hidden=false;
+ }else $("preview").hidden=true;
+ $("ocrStatus").innerHTML="";$("scanCandidates").innerHTML="";
+});
+async function runOCR(){
+ if(!selectedFile||ocrBusy)return;
+ ocrBusy=true;$("ocrBtn").disabled=true;
+ $("ocrStatus").innerHTML='<div class="status info">Dokument wird lokal im Browser vorbereitet. Bei Fotos kann die OCR einige Sekunden dauern.</div>';
+ try{
+   let text="";
+   if(selectedFile.type.startsWith("image/")){
+     if(typeof Tesseract==="undefined")throw new Error("OCR-Bibliothek konnte nicht geladen werden.");
+     const result=await Tesseract.recognize(selectedFile,"deu+eng",{logger:m=>{
+       if(m.status==="recognizing text"&&m.progress) $("ocrStatus").innerHTML=`<div class="status info">OCR läuft … ${Math.round(m.progress*100)} %</div>`;
+     }});
+     text=result.data.text||"";
+   }else if(selectedFile.type==="application/pdf"||selectedFile.name.toLowerCase().endsWith(".pdf")){
+     text=await ocrPdf(selectedFile);
+   }else throw new Error("Dateityp wird nicht unterstützt.");
+   $("ocrText").hidden=false;$("ocrText").textContent=text||"(Kein Text erkannt)";
+   const candidates=extractCandidates(text);
+   renderCandidates(candidates);
+   $("ocrStatus").innerHTML='<div class="status ok">✓ Dokumentanalyse abgeschlossen. Erkannte Kennungen werden als Vorschläge angezeigt und nicht ungeprüft übernommen.</div>';
+ }catch(err){
+   $("ocrStatus").innerHTML='<div class="status danger">OCR konnte nicht ausgeführt werden: '+esc(err.message||String(err))+'</div>';
+ }finally{ocrBusy=false;$("ocrBtn").disabled=false}
+}
+async function ocrPdf(file){
+ /* PDF.js is loaded as a classic browser script. Explicitly configure the worker
+    so iPad/Safari does not throw "GlobalWorkerOptions.workerSrc" errors. */
+ if(!window.pdfjsLib){
+   throw new Error("PDF-OCR-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen oder zunächst ein Foto/Screenshot testen.");
+ }
+ window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+ const buf=await file.arrayBuffer(),pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+ let out="";
+ const n=Math.min(pdf.numPages,3);
+ for(let i=1;i<=n;i++){
+   const page=await pdf.getPage(i),vp=page.getViewport({scale:1.7});
+   const c=document.createElement("canvas"),ctx=c.getContext("2d");c.width=vp.width;c.height=vp.height;
+   await page.render({canvasContext:ctx,viewport:vp}).promise;
+   const r=await Tesseract.recognize(c,"deu+eng");out+="\n"+r.data.text;
+ }
+ return out;
+}
+function extractCandidates(text){
+ const isins=[...new Set((text.match(/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/gi)||[]).map(x=>x.toUpperCase()))];
+ const wkns=[...new Set((text.match(/\b[A-Z0-9]{6}\b/g)||[]).map(x=>x.toUpperCase()).filter(x=>Object.keys(MASTER).includes(x)))];
+ const matches=[...wkns.map(w=>({kind:"WKN",value:w,rec:MASTER[w]})),
+                ...isins.map(is=>({kind:"ISIN",value:is,rec:Object.values(MASTER).find(x=>x.isin===is)}))];
+ return {isins,wkns,matches};
+}
+function renderCandidates(c){
+ let out=`<div class="status info"><strong>Erkannte Kennungen:</strong> ${c.isins.length?c.isins.join(", "):"keine ISIN"} · ${c.wkns.length?c.wkns.join(", "):"keine bekannte WKN"}</div>`;
+ c.matches.forEach((m,i)=>{
+   if(m.rec) out+=`<div class="match"><b>${m.kind}: ${m.value}</b><div class="green">✓ ${esc(m.rec.name)}</div><button class="ghost" onclick="applyCandidate(${JSON.stringify(m.value)})">Als neue Position übernehmen</button></div>`;
+ });
+ if(!c.matches.length)out+='<div class="status warn">Keine bekannte Kennung erkannt. Die OCR kann den Text trotzdem anzeigen; für die Produktion wird die Erkennung um weitere Wertpapierdaten erweitert.</div>';
+ $("scanCandidates").innerHTML=out;
+}
+function applyCandidate(key){
+ $("isin").value=key;lookupIdentifier();
+ $("ocrStatus").innerHTML='<div class="status ok">✓ Kennung übernommen. Der Wertpapiername wurde automatisch aus dem Stammsatz befüllt.</div>';
+ window.scrollTo({top:document.querySelectorAll(".card")[3].offsetTop-10,behavior:"smooth"});
+}
+
+document.querySelectorAll("input,select").forEach(e=>e.addEventListener("input",updateReady));
+document.querySelectorAll("select").forEach(e=>e.addEventListener("change",updateReady));
+render();updateReady();
+</script>
+</body></html>
