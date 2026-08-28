@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BBI Portfolio Risk Scanner V2.2</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#17202a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111827;color:#fff;padding:22px 16px}h1{margin:0;font-size:25px}.sub{margin-top:6px;opacity:.72;font-size:13px}
+main{max-width:900px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 2px 12px #0001}h2{margin:0 0 17px;font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 18px}.field{min-width:0}label{display:block;margin:0 0 7px;font-size:13px;font-weight:700;color:#56616d;line-height:1.25}
+input,select{display:block;width:100%;height:48px;padding:0 13px;border:1px solid #cbd3dc;border-radius:11px;background:#fff;color:#17202a;font:inherit}
+button{width:100%;height:48px;border:0;border-radius:11px;background:#166534;color:#fff;font:inherit;font-weight:700;cursor:pointer;margin-top:12px}.secondary{background:#e9edf1;color:#17202a}.blue{background:#1d4ed8}
+.status{padding:13px;border-radius:12px;margin-top:14px;font-size:14px;line-height:1.45}.info{background:#eaf2ff}.ok{background:#e9f7ef}.danger{background:#fdeaea}
+.step{display:inline-block;background:#111827;color:#fff;border-radius:99px;padding:4px 9px;font-size:12px;margin-right:7px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.kpi{padding:15px;border-radius:14px;background:#f6f7f9;text-align:center}.kpi .n{font-size:26px;font-weight:800}.kpi small{color:#667}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 6px;border-bottom:1px solid #e1e5e9}.right{text-align:right}.empty{text-align:center;color:#667;padding:20px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{font-size:13px;color:#667}
+@media(max-width:760px){.grid,.kpis,.actions{grid-template-columns:1fr}.card{padding:15px}}
+</style></head>
+<body>
+<header><h1>BBI Portfolio Risk Scanner</h1><div class="sub">V2.2 · Depot + Positionen + Kapitalstrom</div></header>
+<main>
+<section class="card"><h2><span class="step">1</span>Depot-Stammdaten</h2><div class="grid">
+<div class="field"><label>Depotinhaber</label><input id="owner" placeholder="Vorname Nachname"></div>
+<div class="field"><label>Depotbezeichnung</label><input id="depot" placeholder="z. B. Privatdepot"></div>
+<div class="field"><label>Depotführender Anbieter / Bank / Neobroker</label><input id="provider" placeholder="z. B. Bank oder Neobroker"></div>
+<div class="field"><label>Depotnummer (optional)</label><input id="depotno" placeholder="****1234"></div>
+<div class="field"><label>Stichtag</label><input id="date" type="date"></div>
+</div></section>
+
+<section class="card"><h2><span class="step">2</span>Depotauszug</h2>
+<div class="status info">📷 Foto/Kamera, Screenshot oder PDF werden später automatisch ausgelesen. Für diesen Test tragen wir die Daten zunächst manuell ein.</div>
+</section>
+
+<section class="card"><h2><span class="step">3</span>Position hinzufügen</h2>
+<div class="grid">
+<div class="field"><label>Vermögensklasse</label><select id="asset"><option>Fonds / ETF</option><option>Aktie</option><option>Anleihe</option><option>Kryptowährung</option><option>Cash</option><option>Sonstiges</option></select></div>
+<div class="field"><label>ISIN / WKN / Symbol</label><input id="isin" placeholder="z. B. DE000... / BTC"></div>
+<div class="field"><label>Wertpapier / Asset</label><input id="name" placeholder="Name"></div>
+<div class="field"><label>Anbieter / Verwahrer</label><input id="custodian" placeholder="Bank, Neobroker, Börse, Wallet"></div>
+<div class="field"><label>Stückzahl / Menge</label><input id="units" type="number" min="0" step="any"></div>
+<div class="field"><label>Wert zum Stichtag (€)</label><input id="value" type="number" min="0" step="0.01"></div>
+</div>
+<button onclick="addPosition()">Position übernehmen</button><div id="msg"></div></section>
+
+<section class="card"><h2><span class="step">4</span>Sparplan / Kapitalstrom</h2>
+<div class="grid">
+<div class="field"><label>Regelmäßige Sparrate (€)</label><input id="saving" type="number" min="0" step="0.01" placeholder="z. B. 500"></div>
+<div class="field"><label>Intervall</label><select id="interval"><option>monatlich</option><option>vierteljährlich</option><option>halbjährlich</option><option>jährlich</option><option>unregelmäßig</option></select></div>
+<div class="field"><label>Zielposition</label><input id="savingTarget" placeholder="z. B. MSCI World ETF"></div>
+<div class="field"><label>Weitere Sparpläne / Hinweise</label><input id="savingOther" placeholder="z. B. 100 € EM-ETF"></div>
+</div>
+<button class="secondary" onclick="addSaving()">Sparplan übernehmen</button><div id="savingMsg"></div>
+</section>
+
+<section class="card"><h2><span class="step">5</span>Depotübersicht</h2>
+<div class="kpis"><div class="kpi"><div class="n" id="total">0 €</div><small>Kapitalbestand</small></div><div class="kpi"><div class="n" id="count">0</div><small>Positionen</small></div><div class="kpi"><div class="n" id="annual">0 €</div><small>laufender Jahreszufluss</small></div></div>
+<table><thead><tr><th>Asset</th><th>ISIN/Symbol</th><th>Klasse</th><th>Anbieter/Verwahrer</th><th class="right">Wert</th><th class="right">Gewicht</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="empty">Noch keine Positionen.</td></tr></tbody></table>
+</section>
+
+<section class="card"><h2><span class="step">6</span>Sparpläne im Depot</h2>
+<table><thead><tr><th>Zielposition</th><th>Rate</th><th>Intervall</th><th class="right">Jahreszufluss</th></tr></thead><tbody id="savingsRows"><tr><td colspan="4" class="empty">Noch keine Sparpläne.</td></tr></tbody></table>
+<div class="note" style="margin-top:12px">Der Kapitalstrom wird getrennt vom heutigen Depotbestand erfasst.</div>
+</section>
+
+<section class="card"><h2><span class="step">7</span>Teststatus</h2>
+<div id="ready" class="status info">Noch keine vollständige Testeingabe.</div>
+</section>
+</main>
+<script>
+let positions=[], savings=[];
+date.value=new Date().toISOString().slice(0,10);
+function annualFactor(i){return {monatlich:12,vierteljährlich:4,halbjährlich:2,jährlich:1,unregelmäßig:0}[i]||0}
+function addPosition(){
+ const p={asset:asset.value,isin:isin.value.trim().toUpperCase(),name:name.value.trim()||"Asset",custodian:custodian.value.trim()||"—",units:+units.value||0,value:+value.value||0};
+ if(!p.isin||p.value<=0){msg.innerHTML='<div class="status danger">Bitte ISIN/Symbol und einen Wert größer 0 eingeben.</div>';return}
+ positions.push(p);render();["isin","name","custodian","units","value"].forEach(id=>document.getElementById(id).value="");
+ msg.innerHTML='<div class="status ok">✓ Position übernommen.</div>';updateReady()
+}
+function addSaving(){
+ const rate=+saving.value||0,target=savingTarget.value.trim()||"Nicht angegeben",int=interval.value;
+ if(rate<=0){savingMsg.innerHTML='<div class="status danger">Bitte eine Sparrate größer 0 eingeben.</div>';return}
+ savings.push({rate,target,int,annual:rate*annualFactor(int)});renderSavings();saving.value=savingTarget.value=savingOther.value="";
+ savingMsg.innerHTML='<div class="status ok">✓ Sparplan übernommen.</div>';updateReady()
+}
+function render(){
+ const totalValue=positions.reduce((a,p)=>a+p.value,0);
+ total.textContent=totalValue.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+ count.textContent=positions.length;
+ rows.innerHTML=positions.length?positions.map(p=>`<tr><td><b>${p.name}</b></td><td>${p.isin}</td><td>${p.asset}</td><td>${p.custodian}</td><td class="right">${p.value.toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</td><td class="right">${(p.value/totalValue*100).toFixed(1)} %</td></tr>`).join(""):'<tr><td colspan="6" class="empty">Noch keine Positionen.</td></tr>';
+ const annualTotal=savings.reduce((a,s)=>a+s.annual,0);
+ annual.textContent=annualTotal.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+}
+function renderSavings(){
+ savingsRows.innerHTML=savings.length?savings.map(s=>`<tr><td><b>${s.target}</b></td><td>${s.rate.toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</td><td>${s.int}</td><td class="right">${s.annual.toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</td></tr>`).join(""):'<tr><td colspan="4" class="empty">Noch keine Sparpläne.</td></tr>';
+ render()
+}
+function updateReady(){
+ const ok=positions.length>0 && owner.value.trim() && provider.value.trim();
+ ready.className="status "+(ok?"ok":"info");
+ ready.innerHTML=ok?"✓ Depotgrunddaten und mindestens eine Position sind erfasst. Die Anwendung ist bereit für den nächsten Analysebaustein.":"Noch keine vollständige Testeingabe.";
+}
+[owner,depot,provider,depotno,date].forEach(e=>e.addEventListener("input",updateReady));
+render();renderSavings();updateReady();
+</script></body></html>
