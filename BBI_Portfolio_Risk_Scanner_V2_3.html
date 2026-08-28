@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BBI Portfolio Risk Scanner V2.3</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f8;color:#17202a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111827;color:#fff;padding:22px 16px}
+h1{margin:0;font-size:25px}.sub{margin-top:6px;opacity:.72;font-size:13px}
+main{max-width:960px;margin:auto;padding:16px}
+.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 2px 12px #0001}
+h2{margin:0 0 17px;font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 18px}
+.field{min-width:0}
+label{display:block;margin:0 0 7px;font-size:13px;font-weight:700;color:#56616d;line-height:1.25}
+input,select{display:block;width:100%;height:48px;padding:0 13px;border:1px solid #cbd3dc;border-radius:11px;background:#fff;color:#17202a;font:inherit}
+input:focus,select:focus{outline:none;border-color:#1d4ed8;box-shadow:0 0 0 3px #1d4ed81a}
+button{width:100%;height:48px;border:0;border-radius:11px;background:#166534;color:#fff;font:inherit;font-weight:700;cursor:pointer;margin-top:12px}
+.secondary{background:#e9edf1;color:#17202a}.dangerBtn{background:#b91c1c}
+.status{padding:13px;border-radius:12px;margin-top:14px;font-size:14px;line-height:1.45}
+.info{background:#eaf2ff}.ok{background:#e9f7ef}.warn{background:#fff6df}.danger{background:#fdeaea}
+.step{display:inline-block;background:#111827;color:#fff;border-radius:99px;padding:4px 9px;font-size:12px;margin-right:7px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:15px;border-radius:14px;background:#f6f7f9;text-align:center}
+.kpi .n{font-size:25px;font-weight:800}.kpi small{color:#667}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 6px;border-bottom:1px solid #e1e5e9}.right{text-align:right}
+.rowactions{display:flex;gap:7px;justify-content:flex-end}
+.rowactions button{width:auto;height:36px;margin:0;padding:0 10px;font-size:12px}
+.empty{text-align:center;color:#667;padding:20px}.note{font-size:13px;color:#667}
+.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef2f7;font-size:12px;font-weight:700}
+hr{border:0;border-top:1px solid #e5e7eb;margin:18px 0}
+@media(max-width:760px){
+ .grid,.kpis{grid-template-columns:1fr}.card{padding:15px}
+ table{font-size:13px}.hideMobile{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>BBI Portfolio Risk Scanner</h1>
+<div class="sub">V2.3 · Vollständige Depoterfassung · Bestand + Kapitalstrom</div>
+</header>
+<main>
+
+<section class="card">
+<h2><span class="step">1</span>Depot-Stammdaten</h2>
+<div class="grid">
+<div class="field"><label for="owner">Depotinhaber</label><input id="owner" placeholder="Vorname Nachname"></div>
+<div class="field"><label for="depot">Depotbezeichnung</label><input id="depot" placeholder="z. B. Privatdepot"></div>
+<div class="field"><label for="provider">Depotführender Anbieter / Bank / Neobroker</label><input id="provider" placeholder="z. B. Bank, Neobroker"></div>
+<div class="field"><label for="depotType">Depotart</label><select id="depotType"><option>Bankdepot</option><option>Neobroker</option><option>Fondsdepot</option><option>Versicherung / Depotmantel</option><option>Sonstiges</option></select></div>
+<div class="field"><label for="depotno">Depotnummer (optional)</label><input id="depotno" placeholder="z. B. ****1234"></div>
+<div class="field"><label for="date">Stichtag</label><input id="date" type="date"></div>
+</div>
+<div class="status info">Foto, Screenshot oder PDF sollen später Depotinhaber, Depotführer, Depotart und Stichtag automatisch erkennen. Unsichere Treffer werden vor Übernahme zur Prüfung angezeigt.</div>
+</section>
+
+<section class="card">
+<h2><span class="step">2</span>Kapitalzufluss auf Depotebene</h2>
+<div class="grid">
+<div class="field"><label for="depositYes">Regelmäßige Einzahlung ins Depot?</label><select id="depositYes"><option>Nein</option><option>Ja</option></select></div>
+<div class="field"><label for="depositAmount">Einzahlungsbetrag (€)</label><input id="depositAmount" type="number" min="0" step="0.01" placeholder="z. B. 1000"></div>
+<div class="field"><label for="depositInterval">Intervall</label><select id="depositInterval"><option>monatlich</option><option>vierteljährlich</option><option>halbjährlich</option><option>jährlich</option><option>unregelmäßig</option></select></div>
+<div class="field"><label for="depositNote">Herkunft / Zweck (optional)</label><input id="depositNote" placeholder="z. B. Gehalt, Altersvorsorge"></div>
+</div>
+<div id="depositStatus" class="status info">Kein regelmäßiger Depotzufluss angegeben.</div>
+</section>
+
+<section class="card">
+<h2><span class="step">3</span>Position hinzufügen</h2>
+<div class="grid">
+<div class="field"><label for="asset">Vermögensklasse</label><select id="asset"><option>Fonds / ETF</option><option>Aktie</option><option>Anleihe</option><option>Kryptowährung</option><option>Cash</option><option>Sonstiges</option></select></div>
+<div class="field"><label for="isin">ISIN / WKN / Symbol</label><input id="isin" placeholder="z. B. DE000... / BTC"></div>
+<div class="field"><label for="name">Wertpapier / Asset</label><input id="name" placeholder="Name"></div>
+<div class="field"><label for="custodian">Anbieter / Verwahrer</label><input id="custodian" placeholder="Bank, Neobroker, Börse, Wallet"></div>
+<div class="field"><label for="units">Stückzahl / Menge</label><input id="units" type="number" min="0" step="any"></div>
+<div class="field"><label for="value">Wert zum Stichtag (€)</label><input id="value" type="number" min="0" step="0.01"></div>
+</div>
+
+<hr>
+
+<div class="grid">
+<div class="field"><label for="savingYes">Sparplan für diese Position?</label><select id="savingYes"><option>Nein</option><option>Ja</option></select></div>
+<div class="field"><label for="savingRate">Sparrate (€)</label><input id="savingRate" type="number" min="0" step="0.01" placeholder="z. B. 250"></div>
+<div class="field"><label for="savingInterval">Sparplan-Intervall</label><select id="savingInterval"><option>monatlich</option><option>vierteljährlich</option><option>halbjährlich</option><option>jährlich</option><option>unregelmäßig</option></select></div>
+<div class="field"><label for="savingNext">Nächste Ausführung (optional)</label><input id="savingNext" type="date"></div>
+</div>
+
+<button id="saveBtn" onclick="savePosition()">Position übernehmen</button>
+<div id="msg"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">4</span>Erfasste Positionen</h2>
+<div class="kpis">
+<div class="kpi"><div class="n" id="total">0 €</div><small>Kapitalbestand</small></div>
+<div class="kpi"><div class="n" id="count">0</div><small>Positionen</small></div>
+<div class="kpi"><div class="n" id="monthlyFlow">0 €</div><small>Sparrate / Monat*</small></div>
+<div class="kpi"><div class="n" id="annualFlow">0 €</div><small>Kapitalzufluss / Jahr*</small></div>
+</div>
+<div class="note" style="margin:10px 0 0">* Regelmäßige Sparpläne; unregelmäßige Zahlungen werden nicht in die Jahreshochrechnung einbezogen.</div>
+
+<table>
+<thead><tr><th>Asset</th><th>ISIN/Symbol</th><th>Klasse</th><th class="hideMobile">Wert</th><th class="hideMobile">Sparplan</th><th class="right">Aktion</th></tr></thead>
+<tbody id="rows"><tr><td colspan="6" class="empty">Noch keine Positionen.</td></tr></tbody>
+</table>
+</section>
+
+<section class="card">
+<h2><span class="step">5</span>Depotstatus</h2>
+<div id="ready" class="status info">Noch keine vollständige Erfassung.</div>
+</section>
+
+</main>
+
+<script>
+let positions=[];
+let editIndex=-1;
+
+const byId=id=>document.getElementById(id);
+byId("date").value=new Date().toISOString().slice(0,10);
+
+function factor(interval){
+ return {monatlich:12,vierteljährlich:4,halbjährlich:2,jährlich:1,unregelmäßig:0}[interval]||0;
+}
+
+function savePosition(){
+ const p={
+  asset:byId("asset").value,
+  isin:byId("isin").value.trim().toUpperCase(),
+  name:byId("name").value.trim()||"Asset",
+  custodian:byId("custodian").value.trim()||"—",
+  units:+byId("units").value||0,
+  value:+byId("value").value||0,
+  saving:byId("savingYes").value==="Ja",
+  rate:+byId("savingRate").value||0,
+  interval:byId("savingInterval").value,
+  next:byId("savingNext").value
+ };
+
+ if(!p.isin||p.value<=0){
+  byId("msg").innerHTML='<div class="status danger">Bitte ISIN/Symbol und einen Wert größer 0 eingeben.</div>';
+  return;
+ }
+ if(p.saving&&p.rate<=0){
+  byId("msg").innerHTML='<div class="status danger">Bei einem Sparplan bitte eine Sparrate eingeben.</div>';
+  return;
+ }
+
+ if(editIndex>=0){
+  positions[editIndex]=p;
+  editIndex=-1;
+  byId("msg").innerHTML='<div class="status ok">✓ Position geändert.</div>';
+ }else{
+  positions.push(p);
+  byId("msg").innerHTML='<div class="status ok">✓ Position übernommen.</div>';
+ }
+
+ clearForm();
+ render();
+ updateReady();
+}
+
+function editPosition(i){
+ const p=positions[i];
+ editIndex=i;
+ byId("asset").value=p.asset;
+ byId("isin").value=p.isin;
+ byId("name").value=p.name;
+ byId("custodian").value=p.custodian;
+ byId("units").value=p.units;
+ byId("value").value=p.value;
+ byId("savingYes").value=p.saving?"Ja":"Nein";
+ byId("savingRate").value=p.rate||"";
+ byId("savingInterval").value=p.interval||"monatlich";
+ byId("savingNext").value=p.next||"";
+ byId("saveBtn").textContent="Position ändern";
+ byId("msg").innerHTML='<div class="status warn">Bearbeitungsmodus aktiv. Änderungen mit „Position ändern“ speichern.</div>';
+ window.scrollTo({top:document.querySelector(".card:nth-of-type(3)").offsetTop-10,behavior:"smooth"});
+}
+
+function removePosition(i){
+ if(!confirm("Position wirklich löschen?")) return;
+ positions.splice(i,1);
+ if(editIndex===i) editIndex=-1;
+ render();
+ updateReady();
+}
+
+function clearForm(){
+ ["isin","name","custodian","units","value","savingRate","savingNext"].forEach(id=>byId(id).value="");
+ byId("savingYes").value="Nein";
+ byId("savingInterval").value="monatlich";
+ byId("saveBtn").textContent="Position übernehmen";
+}
+
+function render(){
+ const totalValue=positions.reduce((a,p)=>a+p.value,0);
+ byId("total").textContent=totalValue.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+ byId("count").textContent=positions.length;
+
+ const monthly=positions.reduce((a,p)=>a+(p.saving&&p.interval==="monatlich"?p.rate:0),0);
+ const annual=positions.reduce((a,p)=>a+(p.saving?p.rate*factor(p.interval):0),0);
+ byId("monthlyFlow").textContent=monthly.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+ byId("annualFlow").textContent=annual.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+
+ byId("rows").innerHTML=positions.length
+ ?positions.map((p,i)=>`<tr>
+   <td><b>${escapeHtml(p.name)}</b></td>
+   <td>${escapeHtml(p.isin)}</td>
+   <td><span class="pill">${escapeHtml(p.asset)}</span></td>
+   <td class="hideMobile">${p.value.toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</td>
+   <td class="hideMobile">${p.saving?p.rate.toLocaleString("de-DE",{style:"currency",currency:"EUR"})+" / "+p.interval:"—"}</td>
+   <td class="right"><div class="rowactions">
+    <button class="secondary" onclick="editPosition(${i})">✎ Bearbeiten</button>
+    <button class="dangerBtn" onclick="removePosition(${i})">×</button>
+   </div></td>
+  </tr>`).join("")
+ :'<tr><td colspan="6" class="empty">Noch keine Positionen.</td></tr>';
+}
+
+function updateReady(){
+ const depositYes=byId("depositYes").value==="Ja";
+ const depositAmount=+byId("depositAmount").value||0;
+ const depFactor=factor(byId("depositInterval").value);
+
+ const ds=byId("depositStatus");
+ ds.className="status "+(depositYes?"ok":"info");
+ ds.innerHTML=depositYes
+  ?(depositAmount>0
+    ?`✓ Depotzufluss: <strong>${depositAmount.toLocaleString("de-DE",{style:"currency",currency:"EUR"})} / ${byId("depositInterval").value}</strong> · Jahreswert: <strong>${(depositAmount*depFactor).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</strong>`
+    :"Bitte Einzahlungsbetrag ergänzen.")
+  :"Kein regelmäßiger Depotzufluss angegeben.";
+
+ const ready=byId("ready");
+ const ok=byId("owner").value.trim()&&byId("provider").value.trim()&&positions.length>0;
+ ready.className="status "+(ok?"ok":"info");
+ ready.innerHTML=ok
+ ?"<strong>✓ Erfassung vollständig genug für den nächsten Analysebaustein.</strong><br>Depot-Stammdaten, mindestens eine Position und die optionalen Kapitalströme sind strukturiert erfasst."
+ :"Noch keine vollständige Erfassung. Mindestens Depotinhaber, Depotführer und eine Position werden benötigt.";
+}
+
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+
+[...document.querySelectorAll("input,select")].forEach(el=>el.addEventListener("input",updateReady));
+[...document.querySelectorAll("select")].forEach(el=>el.addEventListener("change",updateReady));
+
+render();
+updateReady();
+</script>
+</body>
+</html>
