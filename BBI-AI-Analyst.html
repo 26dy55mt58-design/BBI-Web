@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+<title>BBI AI Analyst</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:#f4f6f8;
+  color:#17202a;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+
+header{
+  background:#111827;
+  color:white;
+  padding:24px 18px
+}
+
+header h1{
+  margin:0;
+  font-size:26px
+}
+
+header p{
+  margin:6px 0 0;
+  opacity:.75;
+  font-size:14px
+}
+
+main{
+  max-width:1050px;
+  margin:auto;
+  padding:18px
+}
+
+.card{
+  background:white;
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:18px;
+  box-shadow:0 2px 12px #0001
+}
+
+h2{
+  margin:0 0 16px
+}
+
+.step{
+  display:inline-block;
+  background:#111827;
+  color:white;
+  border-radius:99px;
+  padding:4px 9px;
+  font-size:12px;
+  margin-right:8px
+}
+
+.drop{
+  border:2px dashed #b8c2ce;
+  border-radius:16px;
+  padding:30px;
+  text-align:center;
+  background:#fafbfc
+}
+
+input,select{
+  width:100%;
+  height:46px;
+  border:1px solid #cbd3dc;
+  border-radius:10px;
+  padding:0 12px;
+  font:inherit;
+  background:white
+}
+
+button{
+  width:100%;
+  height:46px;
+  border:0;
+  border-radius:10px;
+  background:#166534;
+  color:white;
+  font-weight:700;
+  font:inherit;
+  margin-top:10px
+}
+
+button.blue{background:#1d4ed8}
+button.gray{
+  background:#e9edf1;
+  color:#17202a
+}
+button.red{background:#b91c1c}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px
+}
+
+.position{
+  border:1px solid #dfe4e9;
+  border-radius:14px;
+  padding:15px;
+  margin-top:12px;
+  background:#fafbfc
+}
+
+.position-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px
+}
+
+.status{
+  padding:10px 12px;
+  border-radius:10px;
+  margin-top:10px;
+  font-size:13px
+}
+
+.ok{background:#e9f7ef;color:#166534}
+.warn{background:#fff6df;color:#8a5a00}
+.info{background:#eaf2ff;color:#1d4ed8}
+.danger{background:#fdeaea;color:#991b1b}
+
+.badge{
+  display:inline-block;
+  padding:5px 9px;
+  border-radius:99px;
+  font-size:11px;
+  font-weight:700
+}
+
+.badge.auto{
+  background:#e9f7ef;
+  color:#166534
+}
+
+.badge.manual{
+  background:#eee9ff;
+  color:#6d28d9
+}
+
+.badge.review{
+  background:#fff6df;
+  color:#8a5a00
+}
+
+.actions{
+  display:flex;
+  gap:8px
+}
+
+.actions button{
+  width:auto;
+  padding:0 12px
+}
+
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px
+}
+
+.kpi{
+  background:#f6f7f9;
+  border-radius:14px;
+  padding:16px;
+  text-align:center
+}
+
+.kpi strong{
+  display:block;
+  font-size:25px
+}
+
+textarea{
+  width:100%;
+  min-height:130px;
+  border:1px solid #cbd3dc;
+  border-radius:10px;
+  padding:12px;
+  font:inherit
+}
+
+.hidden{display:none}
+
+@media(max-width:760px){
+  .grid,.kpis{
+    grid-template-columns:1fr
+  }
+
+  main{
+    padding:12px
+  }
+
+  .card{
+    padding:15px
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>BBI AI Analyst</h1>
+  <p>Depotauszug → KI-Auslesung → Beraterprüfung → Portfolioanalyse</p>
+</header>
+
+<main>
+
+<!-- STEP 1 -->
+
+<section class="card">
+
+<h2>
+<span class="step">1</span>
+Depotauszug hochladen
+</h2>
+
+<div class="drop">
+
+<strong>PDF, Foto oder Screenshot auswählen</strong>
+
+<p>
+Die KI liest den Auszug aus und erstellt daraus
+übernehmbare Portfolio-Positionen.
+</p>
+
+<input
+  id="documentInput"
+  type="file"
+  accept="image/*,.pdf"
+>
+
+</div>
+
+<div id="uploadStatus" class="status info">
+Noch kein Dokument ausgewählt.
+</div>
+
+<button
+  id="scanButton"
+  class="blue"
+  disabled
+  onclick="scanDocument()"
+>
+Dokument automatisch auslesen
+</button>
+
+</section>
+
+
+<!-- STEP 2 -->
+
+<section class="card">
+
+<h2>
+<span class="step">2</span>
+Automatisch erkannte Daten
+</h2>
+
+<div id="scanSummary"
+     class="status info">
+Noch keine Analyse durchgeführt.
+</div>
+
+<div id="positions"></div>
+
+</section>
+
+
+<!-- STEP 3 -->
+
+<section class="card">
+
+<h2>
+<span class="step">3</span>
+Beraterprüfung
+</h2>
+
+<div class="status info">
+
+<strong>Wichtig:</strong>
+
+Die KI entscheidet nicht endgültig über die
+Portfolio-Daten.
+
+Der Berater kann jede Position korrigieren,
+ergänzen oder entfernen.
+
+Erst nach der Bestätigung werden die Daten
+für die Analyse verwendet.
+
+</div>
+
+<div id="validationSummary"></div>
+
+<button
+  class="gray"
+  onclick="addManualPosition()"
+>
++ Position manuell hinzufügen
+</button>
+
+<button
+  onclick="confirmPortfolio()"
+>
+Daten übernehmen & Analyse starten
+</button>
+
+</section>
+
+
+<!-- STEP 4 -->
+
+<section id="analysisSection"
+         class="card hidden">
+
+<h2>
+<span class="step">4</span>
+Portfolioanalyse
+</h2>
+
+<div class="kpis">
+
+<div class="kpi">
+<strong id="positionCount">0</strong>
+Positionen
+</div>
+
+<div class="kpi">
+<strong id="portfolioValue">0 €</strong>
+Depotwert
+</div>
+
+<div class="kpi">
+<strong id="identifiedCount">0</strong>
+identifiziert
+</div>
+
+<div class="kpi">
+<strong id="reviewCount">0</strong>
+Prüfung
+</div>
+
+</div>
+
+<hr>
+
+<h3>BBI</h3>
+
+<div id="bbiResult"
+     class="status info">
+
+Die BBI-Engine wird nach der Validierung
+angewendet.
+
+</div>
+
+<h3>Look-through</h3>
+
+<div id="lookthroughResult"
+     class="status info">
+
+Look-through wird aus den bestätigten
+Positionen aufgebaut.
+
+</div>
+
+<h3>Risikotreiber</h3>
+
+<div id="riskResult"
+     class="status info">
+
+Noch keine Analyse.
+
+</div>
+
+<h3>Bericht</h3>
+
+<div id="report"
+     class="status info">
+
+Der vollständige Bericht wird nach Abschluss
+der Analyse erzeugt.
+
+</div>
+
+</section>
+
+</main>
+
+
+<script>
+
+let positions = [];
+let scanText = "";
+
+const input =
+document.getElementById("documentInput");
+
+input.addEventListener("change",function(){
+
+  if(!this.files.length) return;
+
+  const file=this.files[0];
+
+  document.getElementById("uploadStatus")
+    .className="status ok";
+
+  document.getElementById("uploadStatus")
+    .innerHTML=
+      "<strong>"+escapeHtml(file.name)+
+      "</strong><br>"+
+      Math.round(file.size/1024)+
+      " KB – bereit zur Auslesung.";
+
+  document.getElementById("scanButton")
+    .disabled=false;
+
+});
+
+
+async function scanDocument(){
+
+  const file=input.files[0];
+
+  if(!file) return;
+
+  const status=
+    document.getElementById("uploadStatus");
+
+  status.className="status info";
+
+  status.innerHTML=
+    "Dokument wird analysiert …<br>"+
+    "OCR und Positionserkennung laufen.";
+
+  try{
+
+    if(file.type==="application/pdf"){
+
+      scanText=
+        await extractPdfText(file);
+
+    }else{
+
+      const result=
+        await Tesseract.recognize(
+          file,
+          "deu+eng"
+        );
+
+      scanText=result.data.text;
+
+    }
+
+    positions=
+      extractPositions(scanText);
+
+    renderPositions();
+
+    status.className="status ok";
+
+    status.innerHTML=
+      "<strong>Auslesung abgeschlossen.</strong><br>"+
+      positions.length+
+      " mögliche Position(en) erkannt.";
+
+  }catch(error){
+
+    console.error(error);
+
+    status.className="status danger";
+
+    status.innerHTML=
+      "Die automatische Auslesung konnte nicht "+
+      "vollständig durchgeführt werden.";
+
+  }
+
+}
+
+
+async function extractPdfText(file){
+
+  const buffer=
+    await file.arrayBuffer();
+
+  const pdf=
+    await pdfjsLib
+      .getDocument({data:buffer})
+      .promise;
+
+  let text="";
+
+  for(let i=1;i<=pdf.numPages;i++){
+
+    const page=
+      await pdf.getPage(i);
+
+    const content=
+      await page.getTextContent();
+
+    text +=
+      content.items
+        .map(x=>x.str)
+        .join(" ")
+      +"\n";
+
+  }
+
+  return text;
+
+}
+
+
+function extractPositions(text){
+
+  const result=[];
+
+  const isinRegex=
+    /\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/g;
+
+  const matches=
+    [...new Set(
+      text.match(isinRegex)||[]
+    )];
+
+  matches.forEach(isin=>{
+
+    result.push({
+
+      id:crypto.randomUUID(),
+
+      isin:isin,
+
+      name:"",
+
+      assetClass:"Nicht bestimmt",
+
+      units:"",
+
+      value:"",
+
+      status:"review",
+
+      source:"document",
+
+      verified:false
+
+    });
+
+  });
+
+  return result;
+
+}
+
+
+function renderPositions(){
+
+  const container=
+    document.getElementById("positions");
+
+  container.innerHTML="";
+
+  if(!positions.length){
+
+    container.innerHTML=
+      '<div class="status warn">'+
+      'Keine eindeutige ISIN erkannt. '+
+      'Bitte Position manuell hinzufügen.'+
+      '</div>';
+
+    updateValidation();
+
+    return;
+  }
+
+  positions.forEach((p,index)=>{
+
+    const div=
+      document.createElement("div");
+
+    div.className="position";
+
+    div.innerHTML=`
+
+      <div class="position-header">
+
+        <strong>
+          Position ${index+1}
+        </strong>
+
+        <span class="badge review">
+          Prüfung erforderlich
+        </span>
+
+      </div>
+
+      <div class="grid"
+           style="margin-top:12px">
+
+        <div>
+          <label>ISIN / WKN</label>
+          <input
+            value="${escapeAttr(p.isin)}"
+            onchange="updatePosition('${p.id}','isin',this.value)"
+          >
+        </div>
+
+        <div>
+          <label>Wertpapier</label>
+          <input
+            value="${escapeAttr(p.name)}"
+            placeholder="wird identifiziert"
+            onchange="updatePosition('${p.id}','name',this.value)"
+          >
+        </div>
+
+        <div>
+          <label>Vermögensklasse</label>
+
+          <select
+            onchange="updatePosition('${p.id}','assetClass',this.value)"
+          >
+
+            <option ${p.assetClass==="Nicht bestimmt"?"selected":""}>
+              Nicht bestimmt
+            </option>
+
+            <option ${p.assetClass==="Fonds / ETF"?"selected":""}>
+              Fonds / ETF
+            </option>
+
+            <option ${p.assetClass==="Aktie"?"selected":""}>
+              Aktie
+            </option>
+
+            <option ${p.assetClass==="Anleihe"?"selected":""}>
+              Anleihe
+            </option>
+
+            <option ${p.assetClass==="Cash"?"selected":""}>
+              Cash
+            </option>
+
+            <option ${p.assetClass==="Private Markets"?"selected":""}>
+              Private Markets
+            </option>
+
+          </select>
+
+        </div>
+
+        <div>
+          <label>Stück / Menge</label>
+          <input
+            type="number"
+            value="${escapeAttr(p.units)}"
+            onchange="updatePosition('${p.id}','units',this.value)"
+          >
+        </div>
+
+        <div>
+          <label>Marktwert (€)</label>
+          <input
+            type="number"
+            value="${escapeAttr(p.value)}"
+            onchange="updatePosition('${p.id}','value',this.value)"
+          >
+        </div>
+
+      </div>
+
+      <div class="actions">
+
+        <button
+          class="gray"
+          onclick="verifyPosition('${p.id}')"
+        >
+          ✓ Bestätigen
+        </button>
+
+        <button
+          class="red"
+          onclick="removePosition('${p.id}')"
+        >
+          Entfernen
+        </button>
+
+      </div>
+
+    `;
+
+    container.appendChild(div);
+
+  });
+
+  updateValidation();
+
+}
+
+
+function updatePosition(id,key,value){
+
+  const p=
+    positions.find(x=>x.id===id);
+
+  if(!p) return;
+
+  p[key]=value;
+
+  p.source=
+    "manual";
+
+  p.status=
+    "review";
+
+  updateValidation();
+
+}
+
+
+function verifyPosition(id){
+
+  const p=
+    positions.find(x=>x.id===id);
+
+  if(!p) return;
+
+  p.verified=true;
+
+  p.status=
+    "verified";
+
+  renderPositions();
+
+}
+
+
+function removePosition(id){
+
+  positions=
+    positions.filter(x=>x.id!==id);
+
+  renderPositions();
+
+}
+
+
+function addManualPosition(){
+
+  positions.push({
+
+    id:crypto.randomUUID(),
+
+    isin:"",
+
+    name:"",
+
+    assetClass:"Nicht bestimmt",
+
+    units:"",
+
+    value:"",
+
+    status:"review",
+
+    source:"manual",
+
+    verified:false
+
+  });
+
+  renderPositions();
+
+}
+
+
+function updateValidation(){
+
+  const total=
+    positions.length;
+
+  const verified=
+    positions.filter(
+      p=>p.verified
+    ).length;
+
+  const pending=
+    total-verified;
+
+  document.getElementById(
+    "validationSummary"
+  ).innerHTML=`
+
+    <div class="status ${
+      pending===0 ? "ok":"warn"
+    }">
+
+      <strong>
+        ${verified} von ${total}
+        Positionen bestätigt
+      </strong>
+
+      ${
+        pending>0
+        ?
+        "<br>"+pending+
+        " Position(en) benötigen noch eine Prüfung."
+        :
+        "<br>Alle Positionen sind bestätigt."
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+function confirmPortfolio(){
+
+  if(!positions.length){
+
+    alert(
+      "Es wurden noch keine Positionen erfasst."
+    );
+
+    return;
+
+  }
+
+  const pending=
+    positions.filter(
+      p=>!p.verified
+    );
+
+  if(pending.length){
+
+    alert(
+      "Bitte zuerst alle Positionen bestätigen."
+    );
+
+    return;
+
+  }
+
+  runAnalysis();
+
+}
+
+
+function runAnalysis(){
+
+  const section=
+    document.getElementById(
+      "analysisSection"
+    );
+
+  section.classList.remove("hidden");
+
+  const totalValue=
+    positions.reduce(
+      (sum,p)=>
+        sum+
+        (Number(p.value)||0),
+      0
+    );
+
+  document.getElementById(
+    "positionCount"
+  ).textContent=
+    positions.length;
+
+  document.getElementById(
+    "portfolioValue"
+  ).textContent=
+    euro(totalValue);
+
+  document.getElementById(
+    "identifiedCount"
+  ).textContent=
+    positions.filter(
+      p=>p.isin
+    ).length;
+
+  document.getElementById(
+    "reviewCount"
+  ).textContent=
+    positions.filter(
+      p=>p.status!=="verified"
+    ).length;
+
+
+  /*
+    WICHTIG:
+
+    Hier kommt anschließend unsere
+    echte BBI ENGINE hinein.
+
+    Keine künstliche Bewertung.
+    Keine erfundenen Daten.
+
+    Die Engine erhält ausschließlich
+    bestätigte Portfolio-Daten.
+  */
+
+  document.getElementById(
+    "bbiResult"
+  ).innerHTML=`
+
+    <strong>BBI bereit für Berechnung.</strong>
+
+    <br><br>
+
+    Die bestätigten Positionen wurden
+    an die BBI-Analyse übergeben.
+
+    <br><br>
+
+    <strong>
+    70 % KI-Fundamental ·
+    20 % Bewertung/Marktstress ·
+    10 % Macro & Liquidity
+    </strong>
+
+  `;
+
+
+  document.getElementById(
+    "lookthroughResult"
+  ).innerHTML=
+
+    "<strong>"+
+    positions.length+
+    " bestätigte Position(en)</strong>"+
+    "<br><br>"+
+    "Der Look-through wird anschließend "+
+    "für Fonds/ETFs und Private Markets "+
+    "aufgebaut.";
+
+
+  document.getElementById(
+    "riskResult"
+  ).innerHTML=
+
+    "Risikotreiber werden nach "+
+    "Datenanreicherung automatisch "+
+    "ermittelt.";
+
+
+  document.getElementById(
+    "report"
+  ).innerHTML=
+
+    "<strong>Portfolioanalyse vorbereitet.</strong>"+
+    "<br><br>"+
+    "Der finale Bericht entsteht aus "+
+    "den bestätigten Positionen und "+
+    "der BBI-Engine.";
+
+}
+
+
+function euro(value){
+
+  return new Intl.NumberFormat(
+    "de-DE",
+    {
+      style:"currency",
+      currency:"EUR"
+    }
+  ).format(value);
+
+}
+
+
+function escapeHtml(value){
+
+  return String(value)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+
+function escapeAttr(value){
+
+  return escapeHtml(value||"");
+
+}
+
+</script>
+
+</body>
+</html>
