@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BBI AI Analyst v3</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f8;color:#17202a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111827;color:#fff;padding:24px 18px}
+header h1{margin:0;font-size:26px}
+header p{margin:6px 0 0;opacity:.75;font-size:14px}
+main{max-width:1050px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:0 2px 12px #0001}
+h2{margin:0 0 16px}
+.step{display:inline-block;background:#111827;color:#fff;border-radius:99px;padding:4px 9px;font-size:12px;margin-right:8px}
+.drop{border:2px dashed #b8c2ce;border-radius:16px;padding:30px;text-align:center;background:#fafbfc}
+input,select,textarea{width:100%;border:1px solid #cbd3dc;border-radius:10px;padding:10px 12px;font:inherit;background:#fff}
+input,select{height:46px}
+button{width:100%;min-height:46px;border:0;border-radius:10px;background:#166534;color:#fff;font-weight:700;font:inherit;margin-top:10px;padding:0 14px}
+button.blue{background:#1d4ed8}
+button.gray{background:#e9edf1;color:#17202a}
+button.red{background:#b91c1c}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.position{border:1px solid #dfe4e9;border-radius:14px;padding:15px;margin-top:12px;background:#fafbfc}
+.position-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.status{padding:10px 12px;border-radius:10px;margin-top:10px;font-size:13px}
+.ok{background:#e9f7ef;color:#166534}
+.warn{background:#fff6df;color:#8a5a00}
+.info{background:#eaf2ff;color:#1d4ed8}
+.danger{background:#fdeaea;color:#991b1b}
+.badge{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.badge.auto{background:#e9f7ef;color:#166534}
+.badge.manual{background:#eee9ff;color:#6d28d9}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions button{width:auto}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#f6f7f9;border-radius:14px;padding:16px;text-align:center}
+.kpi strong{display:block;font-size:25px}
+.report{line-height:1.55}
+.report h4{margin:18px 0 7px}
+.report table{width:100%;border-collapse:collapse;font-size:14px}
+.report th,.report td{text-align:left;padding:8px;border-bottom:1px solid #e5e7eb}
+.plan{margin-top:14px;padding:14px;border-radius:12px;background:#eef6ff;border:1px solid #cfe0ff}
+.checkline{display:flex;align-items:center;gap:8px;margin-top:10px}
+.checkline input{width:auto;height:auto}
+.muted{color:#667085}
+.small{font-size:12px}
+.hidden{display:none}
+@media(max-width:760px){.grid,.kpis{grid-template-columns:1fr}main{padding:12px}.card{padding:15px}.actions button{width:100%}}
+</style>
+</head>
+<body>
+<header>
+<h1>BBI AI Analyst v3</h1>
+<p>Depotauszug → automatische Erfassung → Beraterprüfung & Ergänzung → Datenanreicherung → BBI → Bericht</p>
+</header>
+<main>
+
+<section class="card">
+<h2><span class="step">1</span>Depotauszug hochladen</h2>
+<div class="drop">
+<strong>PDF, Foto oder Screenshot auswählen</strong>
+<p>Die Auslesung erstellt übernehmbare Positionen. Die Beraterprüfung bleibt verbindlich.</p>
+<input id="documentInput" type="file" accept="image/*,.pdf">
+</div>
+<div id="uploadStatus" class="status info">Noch kein Dokument ausgewählt.</div>
+<button id="scanButton" class="blue" disabled onclick="scanDocument()">Dokument automatisch auslesen</button>
+</section>
+
+<section class="card">
+<h2><span class="step">2</span>Automatisch erkannte Daten</h2>
+<div id="scanSummary" class="status info">Noch keine Analyse durchgeführt.</div>
+<div id="positions"></div>
+</section>
+
+<section class="card">
+<h2><span class="step">3</span>Beraterprüfung & Ergänzung</h2>
+<div class="status info">
+<strong>Der entscheidende Zwischenschritt:</strong>
+Jede erkannte Position kann bearbeitet werden. Der Berater kann insbesondere einen Sparplan ergänzen,
+Daten korrigieren, Positionen entfernen oder neue Positionen hinzufügen.
+Erst bestätigte Daten gehen in die Analyse.
+</div>
+<div id="validationSummary"></div>
+<button class="gray" onclick="addManualPosition()">+ Position manuell hinzufügen</button>
+<button onclick="confirmPortfolio()">Daten übernehmen & Analyse starten</button>
+</section>
+
+<section id="analysisSection" class="card hidden">
+<h2><span class="step">4</span>Portfolioanalyse</h2>
+<div class="kpis">
+<div class="kpi"><strong id="positionCount">0</strong>Positionen</div>
+<div class="kpi"><strong id="portfolioValue">0 €</strong>Depotwert</div>
+<div class="kpi"><strong id="identifiedCount">0</strong>identifiziert</div>
+<div class="kpi"><strong id="savingsPlanCount">0</strong>Sparpläne</div>
+</div>
+<hr>
+<h3>BBI</h3><div id="bbiResult" class="status info"></div>
+<h3>Look-through</h3><div id="lookthroughResult" class="status info"></div>
+<h3>Risikotreiber</h3><div id="riskResult" class="status info"></div>
+<h3>Bericht</h3><div id="report" class="status info report"></div>
+<button class="blue" onclick="window.print()">Bericht drucken / als PDF sichern</button>
+</section>
+
+</main>
+
+<script>
+let positions=[];
+let scanText="";
+const input=document.getElementById("documentInput");
+
+input.addEventListener("change",function(){
+ if(!this.files.length)return;
+ const f=this.files[0];
+ document.getElementById("uploadStatus").className="status ok";
+ document.getElementById("uploadStatus").innerHTML="<strong>"+escapeHtml(f.name)+"</strong><br>"+Math.round(f.size/1024)+" KB – bereit zur Auslesung.";
+ document.getElementById("scanButton").disabled=false;
+});
+
+async function scanDocument(){
+ const file=input.files[0]; if(!file)return;
+ const s=document.getElementById("uploadStatus");
+ s.className="status info";
+ s.innerHTML="Dokument wird analysiert …<br>OCR und Positionserkennung laufen.";
+ try{
+  scanText=file.type==="application/pdf"?await extractPdfText(file):(await Tesseract.recognize(file,"deu+eng")).data.text;
+  positions=extractPositions(scanText);
+  renderPositions();
+  document.getElementById("scanSummary").innerHTML="<strong>Auslesung abgeschlossen.</strong><br>"+positions.length+" mögliche Position(en) erkannt. Bitte anschließend vollständig prüfen.";
+  s.className="status ok";
+  s.innerHTML="<strong>Auslesung abgeschlossen.</strong>";
+ }catch(e){
+  console.error(e);
+  s.className="status danger";
+  s.innerHTML="Die automatische Auslesung konnte nicht vollständig durchgeführt werden.";
+ }
+}
+
+async function extractPdfText(file){
+ const buffer=await file.arrayBuffer();
+ const pdf=await pdfjsLib.getDocument({data:buffer}).promise;
+ let text="";
+ for(let i=1;i<=pdf.numPages;i++){
+  const page=await pdf.getPage(i);
+  const c=await page.getTextContent();
+  text+=c.items.map(x=>x.str).join(" ")+"\n";
+ }
+ return text;
+}
+
+function extractPositions(text){
+ const out=[];
+ const matches=[...new Set(text.match(/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/g)||[])];
+ matches.forEach(isin=>out.push(basePosition(isin,"document")));
+ return out;
+}
+
+function basePosition(isin="",source="manual"){
+ return {
+  id:crypto.randomUUID(),isin,name:"",assetClass:"Nicht bestimmt",units:"",value:"",
+  verified:false,source,
+  savingsPlan:{enabled:false,amount:"",frequency:"monatlich",nextDate:""}
+ };
+}
+
+function renderPositions(){
+ const c=document.getElementById("positions");
+ c.innerHTML="";
+ if(!positions.length){
+  c.innerHTML='<div class="status warn">Keine eindeutige Position erkannt. Bitte Position manuell hinzufügen.</div>';
+  updateValidation(); return;
+ }
+ positions.forEach((p,i)=>{
+  const d=document.createElement("div");
+  d.className="position";
+  d.innerHTML=`
+  <div class="position-header">
+    <strong>Position ${i+1}</strong>
+    <span class="badge ${p.source==="document"?"auto":"manual"}">${p.source==="document"?"Automatisch erkannt":"Manuell ergänzt"}</span>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <div><label>ISIN / WKN</label><input value="${escapeAttr(p.isin)}" onchange="updatePosition('${p.id}','isin',this.value)"></div>
+    <div><label>Wertpapier</label><input value="${escapeAttr(p.name)}" placeholder="Wertpapiername ergänzen" onchange="updatePosition('${p.id}','name',this.value)"></div>
+    <div><label>Vermögensklasse</label><select onchange="updatePosition('${p.id}','assetClass',this.value)">
+      ${["Nicht bestimmt","Fonds / ETF","Aktie","Anleihe","Cash","Private Markets","Sonstiges"].map(x=>`<option ${p.assetClass===x?"selected":""}>${x}</option>`).join("")}
+    </select></div>
+    <div><label>Stück / Menge</label><input type="number" step="any" value="${escapeAttr(p.units)}" onchange="updatePosition('${p.id}','units',this.value)"></div>
+    <div><label>Marktwert (€)</label><input type="number" step="0.01" value="${escapeAttr(p.value)}" onchange="updatePosition('${p.id}','value',this.value)"></div>
+    <div><label>Bemerkung</label><input value="${escapeAttr(p.note||"")}" placeholder="optional" onchange="updatePosition('${p.id}','note',this.value)"></div>
+  </div>
+  <div class="plan">
+    <strong>Sparplan</strong>
+    <div class="checkline">
+      <input id="plan-${p.id}" type="checkbox" ${p.savingsPlan.enabled?"checked":""} onchange="togglePlan('${p.id}',this.checked)">
+      <label for="plan-${p.id}">Sparplan vorhanden / ergänzen</label>
+    </div>
+    ${p.savingsPlan.enabled?`
+    <div class="grid" style="margin-top:10px">
+      <div><label>Rate (€)</label><input type="number" step="0.01" value="${escapeAttr(p.savingsPlan.amount)}" onchange="updatePlan('${p.id}','amount',this.value)"></div>
+      <div><label>Intervall</label><select onchange="updatePlan('${p.id}','frequency',this.value)">
+        ${["monatlich","vierteljährlich","halbjährlich","jährlich","sonstig"].map(x=>`<option ${p.savingsPlan.frequency===x?"selected":""}>${x}</option>`).join("")}
+      </select></div>
+      <div><label>Nächste Ausführung</label><input type="date" value="${escapeAttr(p.savingsPlan.nextDate)}" onchange="updatePlan('${p.id}','nextDate',this.value)"></div>
+    </div>`:"<div class='small muted' style='margin-top:8px'>Kein Sparplan erfasst.</div>"}
+  </div>
+  <div class="actions">
+    <button class="gray" onclick="verifyPosition('${p.id}')">✓ Position bestätigen</button>
+    <button class="red" onclick="removePosition('${p.id}')">Entfernen</button>
+  </div>`;
+  c.appendChild(d);
+ });
+ updateValidation();
+}
+
+function updatePosition(id,key,value){
+ const p=positions.find(x=>x.id===id); if(!p)return;
+ p[key]=value; p.source="manual"; p.verified=false; renderPositions();
+}
+function togglePlan(id,on){
+ const p=positions.find(x=>x.id===id); if(!p)return;
+ p.savingsPlan.enabled=on; p.verified=false; renderPositions();
+}
+function updatePlan(id,key,value){
+ const p=positions.find(x=>x.id===id); if(!p)return;
+ p.savingsPlan[key]=value; p.verified=false; updateValidation();
+}
+function verifyPosition(id){
+ const p=positions.find(x=>x.id===id); if(!p)return;
+ p.verified=true; renderPositions();
+}
+function removePosition(id){
+ positions=positions.filter(x=>x.id!==id); renderPositions();
+}
+function addManualPosition(){
+ positions.push(basePosition()); renderPositions();
+ setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"}),50);
+}
+function updateValidation(){
+ const total=positions.length,verified=positions.filter(p=>p.verified).length,pending=total-verified;
+ document.getElementById("validationSummary").innerHTML=
+ `<div class="status ${pending===0&&total?"ok":"warn"}"><strong>${verified} von ${total} Positionen bestätigt</strong>${pending?"<br>"+pending+" Position(en) benötigen noch Prüfung.":"<br>Alle Positionen sind bestätigt."}</div>`;
+}
+function confirmPortfolio(){
+ if(!positions.length){alert("Es wurden noch keine Positionen erfasst.");return}
+ const pending=positions.filter(p=>!p.verified);
+ if(pending.length){alert("Bitte zuerst alle Positionen bestätigen.");return}
+ runAnalysis();
+}
+function runAnalysis(){
+ const sec=document.getElementById("analysisSection");
+ sec.classList.remove("hidden");
+ const value=positions.reduce((s,p)=>s+(Number(p.value)||0),0);
+ const plans=positions.filter(p=>p.savingsPlan.enabled);
+ document.getElementById("positionCount").textContent=positions.length;
+ document.getElementById("portfolioValue").textContent=euro(value);
+ document.getElementById("identifiedCount").textContent=positions.filter(p=>p.isin).length;
+ document.getElementById("savingsPlanCount").textContent=plans.length;
+
+ document.getElementById("bbiResult").innerHTML=
+ `<strong>BBI-Analyse vorbereitet.</strong><br>
+ Die bestätigten Positionen stehen für die BBI-Engine zur Verfügung.<br><br>
+ <strong>Gewichtung:</strong> 70 % KI-Fundamental · 20 % Bewertung/Market Stress · 10 % Macro & Liquidity.<br>
+ <span class="small">Hinweis: Ohne angebundene Live-Datenquelle wird kein künstlicher Score erfunden.</span>`;
+
+ document.getElementById("lookthroughResult").innerHTML=
+ `<strong>${positions.length} bestätigte Position(en)</strong><br><br>`+
+ positions.map(p=>escapeHtml(p.name||p.isin||"Position ohne Identifikation")).join("<br>");
+
+ const missing=[];
+ positions.forEach((p,i)=>{
+  if(!p.isin)missing.push("Position "+(i+1)+": ISIN/WKN fehlt");
+  if(!p.name)missing.push("Position "+(i+1)+": Wertpapiername fehlt");
+  if(!p.value)missing.push("Position "+(i+1)+": Marktwert fehlt");
+ });
+ document.getElementById("riskResult").innerHTML=
+ `<strong>Erkannte Datenqualität / Risikohinweise</strong><br>`+
+ (missing.length?missing.map(escapeHtml).join("<br>"):"Keine offensichtliche Stammdatenlücke in den bestätigten Eingaben.")+
+ `<br><br>Für eine echte BBI-Risikobewertung müssen anschließend Fondsdaten, Kosten, Performance, Drawdown, Bewertung/Marktstress und Macro-&-Liquidity-Daten angebunden werden.`;
+
+ document.getElementById("report").innerHTML=buildReport(value,plans,missing);
+ sec.scrollIntoView({behavior:"smooth"});
+}
+function buildReport(value,plans,missing){
+ const rows=positions.map(p=>`<tr><td>${escapeHtml(p.name||"—")}</td><td>${escapeHtml(p.isin||"—")}</td><td>${escapeHtml(p.assetClass)}</td><td>${euro(Number(p.value)||0)}</td><td>${p.savingsPlan.enabled?euro(Number(p.savingsPlan.amount)||0)+" / "+escapeHtml(p.savingsPlan.frequency):"—"}</td></tr>`).join("");
+ return `<h3>BBI AI Portfolio Report</h3>
+ <p><strong>Analysebasis:</strong> ${positions.length} bestätigte Position(en), analysierter Wert ${euro(value)}.</p>
+ <h4>1. Portfolioübersicht</h4>
+ <table><thead><tr><th>Wertpapier</th><th>ISIN/WKN</th><th>Klasse</th><th>Wert</th><th>Sparplan</th></tr></thead><tbody>${rows}</tbody></table>
+ <h4>2. Sparplanübersicht</h4>
+ <p>${plans.length?"Es wurden "+plans.length+" Sparplan/Sparpläne erfasst. Die ergänzten Angaben sind Bestandteil der bestätigten Analysebasis.":"Kein Sparplan erfasst."}</p>
+ <h4>3. BBI-Einordnung</h4>
+ <p>Die Portfolio-Daten sind bestätigt und für die BBI-Engine bereit. Die Zielgewichtung lautet <strong>70 % KI-Fundamental / 20 % Bewertung & Market Stress / 10 % Macro & Liquidity</strong>.</p>
+ <p class="muted">Ein numerischer BBI-Score wird in dieser Browserversion nur ausgegeben, wenn die dafür erforderlichen Datenquellen angebunden sind. Fehlende Werte werden nicht erfunden.</p>
+ <h4>4. Datenlücken</h4>
+ <p>${missing.length?missing.map(escapeHtml).join("<br>"):"Keine offensichtlichen Eingabelücken."}</p>
+ <h4>5. Nächster Analyseschritt</h4>
+ <p>Stammdaten und Marktdaten anreichern → Look-through durchführen → BBI-Blöcke berechnen → vollständige Risiko-/Chancenbewertung erzeugen.</p>`;
+}
+function euro(n){return new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n||0)}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
+function escapeAttr(s){return escapeHtml(s)}
+</script>
+</body>
+</html>
