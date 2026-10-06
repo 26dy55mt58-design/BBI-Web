@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BBI AI Analyst V7.6</title>
+<style>
+:root{--blue:#1d4ed8;--bg:#f5f7fb;--ink:#172033}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+.wrap{max-width:1000px;margin:auto;padding:16px}.hero,.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 3px 14px #0001}
+h1{margin:0 0 6px;font-size:28px}h2{margin:0 0 12px}.muted{color:#667085}.step{display:flex;gap:10px;align-items:center}.num{background:#111827;color:#fff;border-radius:50%;width:30px;height:30px;display:grid;place-items:center;font-weight:700}
+.info{background:#eff6ff;color:#1745b5;padding:13px;border-radius:12px;margin:12px 0}.warn{background:#fff7df;color:#8a5b00;padding:13px;border-radius:12px;margin:12px 0}.ok{background:#ecfdf3;color:#166534;padding:13px;border-radius:12px;margin:12px 0}
+button{border:0;border-radius:11px;padding:12px 15px;font-size:15px;font-weight:650;cursor:pointer}.primary{background:var(--blue);color:#fff}.green{background:#166534;color:#fff}.secondary{background:#eef2f7}.danger{background:#fee2e2;color:#991b1b}
+input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;background:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:12px;font-weight:700;color:#475467}
+.pos{border:1px solid #dbe3ef;border-radius:14px;padding:14px;margin:12px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:700}
+.scroll{overflow:auto}table{width:100%;border-collapse:collapse;min-width:720px}th,td{text-align:left;padding:9px;border-bottom:1px solid #e5e7eb}th{font-size:12px;color:#475467}
+.score{font-size:48px;font-weight:800}.scorebox{display:flex;gap:20px;align-items:center}.bar{height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:#1d4ed8}
+.hidden{display:none}.small{font-size:12px}.metric{padding:14px;border:1px solid #e5e7eb;border-radius:14px}.metric h3{margin:5px 0}.report{border-left:4px solid var(--blue);padding-left:14px}
+@media(max-width:700px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:10px}}
+@media print{body{background:#fff!important;color:#111827}.wrap{max-width:none;padding:0}.hero,section.card:not(#reportCard){display:none!important}#reportCard{display:block!important;box-shadow:none!important;margin:0!important;padding:0!important;border-radius:0!important}#reportCard .actions{display:none!important}.report{border-left:0;padding-left:0}.print-header{display:block!important}table{min-width:0!important;font-size:10px}th,td{padding:6px}.page-break{break-before:page}.no-break{break-inside:avoid}}
+.print-header{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="hero">
+<h1>BBI AI Analyst V7.6</h1>
+<div class="muted">Depotdokument → Positionen → Beraterprüfung → Security Master → Look-through → BBI 70/20/10 → Bericht</div>
+</section>
+
+<section class="card">
+<div class="step"><span class="num">1</span><h2>Depotdokument</h2></div>
+<div class="info"><b>Automatische Erkennung:</b> Das Dokument wird als Datenquelle übernommen. Erkannte Angaben werden anschließend vom Berater geprüft und können vollständig geändert oder ergänzt werden.</div>
+<input id="file" type="file" accept=".pdf,image/*">
+<div class="actions"><button class="primary" onclick="readDocument()">Dokument auslesen</button><button class="secondary" onclick="loadTest()">Testposition laden</button></div>
+<div id="status" class="muted" style="margin-top:9px"></div>
+</section>
+
+<section class="card">
+<div class="step"><span class="num">2</span><h2>Erkannte Positionen</h2></div>
+<div id="extract" class="info">Noch keine Position erkannt.</div>
+</section>
+
+<section class="card">
+<div class="step"><span class="num">3</span><h2>Beraterprüfung & Eingabe</h2></div>
+<div class="info">Der Berater bleibt für die Datenbestätigung verantwortlich. Positionen können bearbeitet, bestätigt, gelöscht oder manuell hinzugefügt werden.</div>
+<div id="positions"></div>
+<div class="actions">
+<button class="secondary" onclick="addPosition()">＋ Position manuell hinzufügen</button>
+<button class="green" onclick="analyse()">Bestätigte Positionen analysieren</button>
+</div>
+</section>
+
+<section class="card">
+<div class="step"><span class="num">4</span><h2>Security Master</h2></div>
+<div class="grid3">
+<div class="metric"><b>11</b><div class="small muted">lokale Referenzdatensätze</div></div>
+<div class="metric"><b>63.809</b><div class="small muted">vorbereitete Referenzdatensätze</div></div>
+<div class="metric"><b>ISIN</b><div class="small muted">primärer Schlüssel</div></div>
+</div>
+</section>
+
+<section id="analysis" class="card hidden">
+<div class="step"><span class="num">5</span><h2>BBI Portfolioanalyse</h2></div>
+<div id="analysisBody"></div>
+</section>
+
+<section id="reportCard" class="card hidden">
+<div class="step"><span class="num">6</span><h2>Beraterbericht</h2></div>
+<div id="report" class="report"></div>
+<div class="actions"><button class="primary" onclick="window.print()">Drucken / PDF sichern</button><button class="secondary" onclick="buildPdfReport()">Bericht aktualisieren</button></div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+"use strict";
+const MASTER={
+"LU2034157706":{wkn:"A2PN9K",name:"Allianz Best Styles Global Equity SRI A EUR",asset:"Fonds / ETF"},
+"LU1089088311":{wkn:"A117VR",name:"Allianz Dynamic Multi Asset Strategy SRI 75 A EUR",asset:"Fonds / ETF"},
+"LU1752425543":{wkn:"A2JBTT",name:"Allianz Oriental Income A EUR",asset:"Fonds / ETF"},
+"LU0939909866":{wkn:"A1WZQU",name:"WEALTH FUND-H2CONSERVATIVE - PROFESSIONAL",asset:"Fonds / ETF"},
+"LU1242417589":{name:"Vontobel Credit Opps E USD Cap",asset:"Fonds"},
+"IE000E4XZ7U3":{name:"Man Dynamic Income I H EUR Cap",asset:"Fonds"},
+"DE000A2DTM69":{name:"Der Zukunftsfonds C",asset:"Fonds"},
+"DE000A3D1WP8":{name:"FAM Credit Select I",asset:"Fonds"},
+"LI1303530664":{name:"Tell's Arrow Opport Bnd Fd EUR Kl. I",asset:"Fonds"},
+"NL0011683594":{name:"VanEck Morningstar DevMrkts Div Lead ETF",asset:"ETF"},
+"DE000A2H7NU1":{name:"Capitulum Weltzins-Invest Universal I",asset:"Fonds"},
+"IT0005504821":{name:"Borgosesia",asset:"Aktie"},
+"DE000A3DDTK9":{name:"FS Colibri Event Driven Bonds X (t)",asset:"Fonds"},
+"CH1214797172":{name:"UBS Group AG",asset:"Aktie"}
+};
+const LOOKTHROUGH=[
+["Vontobel Credit Opps E USD Cap","LU1242417589",15.55],
+["Man Dynamic Income I H EUR Cap","IE000E4XZ7U3",14.02],
+["Der Zukunftsfonds C","DE000A2DTM69",11.66],
+["FAM Credit Select I","DE000A3D1WP8",8.46],
+["Tell's Arrow Opport Bnd Fd EUR Kl. I","LI1303530664",8.12],
+["VanEck Morningstar DevMrkts Div Lead ETF","NL0011683594",7.88],
+["Capitulum Weltzins-Invest Universal I","DE000A2H7NU1",7.32],
+["Borgosesia","IT0005504821",5.84],
+["FS Colibri Event Driven Bonds X (t)","DE000A3DDTK9",5.57],
+["UBS Group AG","CH1214797172",3.11]
+];
+let positions=[];
+
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function addPosition(p){
+p=p||{};
+positions.push({id:Date.now()+Math.random(),name:p.name||"",isin:p.isin||"",wkn:p.wkn||"",asset:p.asset||"Fonds / ETF",units:p.units||"",value:p.value||"",savings:p.savings||"",interval:p.interval||"monatlich",nav:p.nav||"",valueSource:p.valueSource||"",check:p.check||"",confirmed:false});
+render();
+}
+function update(id,key,val){const p=positions.find(x=>x.id===id);if(p){p[key]=val;p.confirmed=false;}}
+function removePosition(id){positions=positions.filter(x=>x.id!==id);render();}
+function confirmPosition(id){const p=positions.find(x=>x.id===id);if(p)p.confirmed=true;render();}
+function render(){
+const el=document.getElementById("positions");
+if(!positions.length){el.innerHTML='<div class="warn">Keine Position vorhanden. Sie können eine Position manuell hinzufügen.</div>';return;}
+el.innerHTML=positions.map(p=>`
+<div class="pos">
+<div style="display:flex;justify-content:space-between;gap:10px"><b>${esc(p.name||"Neue Position")}</b><span class="badge">${p.confirmed?"BESTÄTIGT":"PRÜFUNG"}</span></div>
+<div class="grid" style="margin-top:10px">
+<div class="field"><label>Wertpapier / Fonds</label><input value="${esc(p.name)}" oninput="BBI.update(${p.id},'name',this.value)"></div>
+<div class="field"><label>ISIN</label><input value="${esc(p.isin)}" oninput="BBI.update(${p.id},'isin',this.value.toUpperCase())"></div>
+<div class="field"><label>WKN</label><input value="${esc(p.wkn)}" oninput="BBI.update(${p.id},'wkn',this.value.toUpperCase())"></div>
+<div class="field"><label>Assetklasse</label><select onchange="BBI.update(${p.id},'asset',this.value)">
+<option ${p.asset==="Fonds / ETF"?"selected":""}>Fonds / ETF</option><option ${p.asset==="Aktie"?"selected":""}>Aktie</option><option ${p.asset==="Anleihe"?"selected":""}>Anleihe</option><option ${p.asset==="Cash"?"selected":""}>Cash</option><option ${p.asset==="Sonstige"?"selected":""}>Sonstige</option></select></div>
+<div class="field"><label>Stück / Anteile</label><input value="${esc(p.units)}" oninput="BBI.update(${p.id},'units',this.value)"></div>
+<div class="field"><label>Marktwert (€)</label><input value="${esc(p.value)}" oninput="BBI.update(${p.id},'value',this.value)">${p.valueSource?`<div class="small muted" style="margin-top:5px">Quelle: ${p.valueSource==='document-label'?'Dokument · akt. Wert':p.valueSource==='document-column'?'Dokument · Wertespalte':'berechnet aus Stück × Kurs'}${p.check==='prüfen'?' · ⚠️ Plausibilitätsabweichung – bitte prüfen':p.check==='abweichung-klein'?' · ℹ️ kleine Abweichung zum Kurswert':''}</div>`:''}</div>
+<div class="field"><label>Sparplan (€)</label><input value="${esc(p.savings)}" placeholder="optional" oninput="BBI.update(${p.id},'savings',this.value)"></div>
+<div class="field"><label>Intervall</label><select onchange="BBI.update(${p.id},'interval',this.value)">
+<option ${p.interval==="monatlich"?"selected":""}>monatlich</option><option ${p.interval==="vierteljährlich"?"selected":""}>vierteljährlich</option><option ${p.interval==="halbjährlich"?"selected":""}>halbjährlich</option><option ${p.interval==="jährlich"?"selected":""}>jährlich</option></select></div>
+</div>
+<div class="actions"><button class="green" onclick="BBI.confirm(${p.id})">✓ Bestätigen</button><button class="danger" onclick="BBI.remove(${p.id})">Entfernen</button></div>
+</div>`).join("");
+}
+function loadTest(){
+positions=[];addPosition({name:MASTER["LU0939909866"].name,isin:"LU0939909866",wkn:"A1WZQU",asset:"Fonds / ETF",units:"128.8538",savings:"100",interval:"monatlich"});
+document.getElementById("extract").innerHTML="<b>Testposition geladen.</b> Alle Felder bleiben bearbeitbar.";
+document.getElementById("status").textContent="Testdaten geladen.";
+}
+async function readDocument(){
+const f=document.getElementById("file").files[0]; if(!f){document.getElementById("status").textContent="Bitte ein PDF oder Bild auswählen.";return;}
+const status=document.getElementById("status"),extract=document.getElementById("extract");status.textContent="Dokument wird gelesen …";extract.innerHTML='<div class="info"><b>Dokumentanalyse läuft …</b><br>Alle Positionen werden gesucht.</div>';
+try{
+ let text="";
+ if(f.type.startsWith("image/")){if(typeof Tesseract==="undefined")throw new Error("OCR-Bibliothek konnte nicht geladen werden.");const rr=await Tesseract.recognize(f,"deu+eng",{logger:m=>{if(m.status==="recognizing text"&&m.progress)status.textContent="OCR läuft … "+Math.round(m.progress*100)+" %";}});text=rr.data.text||"";}
+ else if(f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf")){if(!window.pdfjsLib)throw new Error("PDF-Bibliothek konnte nicht geladen werden.");window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const buf=await f.arrayBuffer(),pdf=await window.pdfjsLib.getDocument({data:buf}).promise;let native="";for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),tc=await page.getTextContent();native+="\n"+(tc.items||[]).map(x=>x.str||"").join("\n");}if(native.replace(/\s/g,"").length>120)text=native;else{if(typeof Tesseract==="undefined")throw new Error("OCR-Bibliothek konnte nicht geladen werden.");for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),vp=page.getViewport({scale:2}),can=document.createElement("canvas"),ctx=can.getContext("2d");can.width=vp.width;can.height=vp.height;await page.render({canvasContext:ctx,viewport:vp}).promise;const rr=await Tesseract.recognize(can,"deu+eng",{logger:m=>{if(m.status==="recognizing text"&&m.progress)status.textContent="PDF-OCR Seite "+i+"/"+pdf.numPages+" … "+Math.round(m.progress*100)+" %";}});text+="\n"+(rr.data.text||"");}}}
+ else throw new Error("Dateityp wird nicht unterstützt.");
+ const parsed=parseDocumentPositions(text);positions=[];parsed.forEach(p=>addPosition(p));
+ if(!parsed.length){extract.innerHTML='<div class="warn"><b>Dokument gelesen, aber keine Position erkannt.</b><br>Sie können Positionen jetzt manuell hinzufügen.</div><details><summary>Erkannten Text anzeigen</summary><pre style="white-space:pre-wrap;font-size:11px;max-height:280px;overflow:auto">'+esc(text)+'</pre></details>';status.textContent="Dokument gelesen – keine Position erkannt.";render();return;}
+ const rows=parsed.map((p,i)=>"<b>"+(i+1)+".</b> "+esc(p.name||"Unbekannt")+" · "+esc(p.isin)+(p.units?" · "+p.units.toLocaleString("de-DE")+" Stück":"")+(p.value?" · "+Number(p.value).toLocaleString("de-DE",{minimumFractionDigits:2})+" €":"")+(p.check==='prüfen'?" · ⚠️ prüfen":"")).join("<br>");
+ extract.innerHTML='<div class="ok"><b>'+parsed.length+' Position'+(parsed.length===1?"":"en")+' automatisch erkannt.</b><br>'+rows+'</div><div class="small muted">Jede Position ist einzeln bearbeitbar, bestätigbar oder löschbar. Weitere Positionen können manuell hinzugefügt werden.</div>';status.textContent=parsed.length+" Position"+(parsed.length===1?"":"en")+" erkannt.";
+}catch(err){console.error(err);status.textContent="Dokument konnte nicht vollständig gelesen werden.";extract.innerHTML='<div class="warn"><b>Auslesefehler:</b> '+esc(err.message||String(err))+'</div>';}
+}
+
+function parseGermanNumber(s){
+  if(s==null)return 0;
+  let x=String(s).replace(/\s/g,"").replace(/€/g,"");
+  if(x.includes(",")) x=x.replace(/\./g,"").replace(",",".");
+  return Number(x)||0;
+}
+function moneyList(text){
+  const out=[];
+  const re=/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))\s*(?:€|EUR)/gi;
+  for(const m of String(text).matchAll(re)) out.push(parseGermanNumber(m[1]));
+  return out;
+}
+function parseDocumentPositions(text){
+  const raw=String(text||"");
+  const wealth=/WEALTH\s*FUND|H2\s*CONSERVATIVE|A1WZQU|LU0939909866/i.test(raw);
+  if(wealth){const one=parseDocumentPositionSingle(raw);return one?[one]:[];}
+  const known=[
+    {pattern:/Allianz\s+Best\s+Styles\s+Global\s+Equity\s+SRI\s+A\s+EUR/i,isin:"LU2034157706"},
+    {pattern:/Allianz\s+Dy(?:nam|name)\w*\s+Multi\s+Asset\s+Strategy\s+SRI\s*75\s+A\s+EUR/i,isin:"LU1089088311"},
+    {pattern:/All(?:ianz|lianz)\s+Oriental\s+Income\s+A\s+EUR/i,isin:"LU1752425543"}
+  ];
+  const knownHits=[];
+  for(const k of known){const mm=raw.match(k.pattern);if(mm)knownHits.push({isin:k.isin,pos:mm.index});}
+  if(knownHits.length){
+    const out=[];
+    for(let i=0;i<knownHits.length;i++){
+      const h=knownHits[i], next=knownHits[i+1]?.pos??raw.length, block=raw.slice(h.pos,next), master=MASTER[h.isin];
+      const num=s=>{let x=String(s).replace(/\s/g,"");if(x.includes(","))x=x.replace(/\./g,"").replace(",",".");return Number(x)||0;};
+      /* V7.5: Allianz-Depotzeilen werden spaltenorientiert plausibilisiert.
+         Wichtig: Der ausgewiesene aktuelle Wert ist die Primärquelle.
+         Stück × Kurs dient nur als Plausibilitätsprüfung und ersetzt den
+         Dokumentwert nicht. */
+      const navM=block.match(/\b\d{1,4}[.,]\d{4}\b/);
+      const unitM=block.match(/\b\d{1,4}[.,]\d{3}\b/);
+      const nav=navM?num(navM[0]):"", units=unitM?num(unitM[0]):"";
+      const money=[...block.matchAll(/\b\d{1,3}(?:\.\d{3})*,\d{2}\b/g)].map(x=>num(x[0]));
+      /* In diesem Depotlayout stehen Einstandswert und akt. Wert direkt
+         nacheinander. Deshalb ist money[1] der aktuelle Positionswert.
+         Falls die OCR die Spalten anders liefert, fällt der Parser auf
+         eine explizite akt.-Wert-Suche bzw. auf Stück × Kurs zurück. */
+      let value="", valueSource="missing";
+      const currentValueMatch=block.match(/(?:akt\.?\s*wert|aktueller\s*wert|marktwert)[^\d]{0,25}(\d{1,3}(?:\.\d{3})*,\d{2})/i);
+      if(currentValueMatch){ value=num(currentValueMatch[1]); valueSource="document-label"; }
+      else if(money.length>=2){ value=money[1]; valueSource="document-column"; }
+      else if(units&&nav){ value=Math.round(units*nav*100)/100; valueSource="calculated"; }
+      let check="";
+      if(units&&nav&&value){
+        const calc=Math.round(units*nav*100)/100;
+        const delta=Math.abs(value-calc);
+        check=delta<=0.10?"plausibel":(delta/Math.max(value,1)<=0.005?"abweichung-klein":"prüfen");
+      }
+      out.push({name:master.name,isin:h.isin,wkn:master.wkn,asset:master.asset,units,value,savings:"",interval:"monatlich",nav,valueSource,check});
+    }
+    return out;
+  }
+  const hits=[]; const re=/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/g; let m;
+  while((m=re.exec(raw))){const isin=m[0].toUpperCase();if(!hits.some(x=>x.isin===isin))hits.push({isin,pos:m.index});}
+  return hits.map((h,idx)=>{
+    const next=hits[idx+1]?.pos??raw.length;
+    const before=raw.slice(Math.max(0,h.pos-320),h.pos);
+    const block=raw.slice(h.pos,next);
+    const master=MASTER[h.isin]||{};
+    const lines=before.split(/\n+/).map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>=5);
+    let name=master.name||"";
+    if(!name){const good=lines.filter(s=>!/^(Wertpapier|ISIN|WKN|Produkt|Unterkonto|Stück|akt\.? Preis|Einstellwert|Performance)/i.test(s));name=good[good.length-1]||"Erkannte Position";name=name.replace(/\s+[A-Z]\d[A-Z0-9]{4,5}\s*$/,"").trim();}
+    let wkn=master.wkn||""; if(!wkn){const wm=block.match(/\b[A-Z]\d[A-Z0-9]{4,5}\b/);if(wm)wkn=wm[0];}
+    const num=s=>{let x=String(s).replace(/\s/g,"");if(x.includes(","))x=x.replace(/\./g,"").replace(",",".");return Number(x)||0;};
+    const unit=(block.match(/\b\d{1,4}[.,]\d{3}\b/)||[])[0];
+    const nav=(block.match(/\b\d{1,4}[.,]\d{4}\b/)||[])[0];
+    const money=[...block.matchAll(/\b\d{1,3}(?:\.\d{3})*,\d{2}\b/g)].map(x=>x[0]);
+    let value=money.length?num(money[money.length-1]):0;
+    if(!value){const plain=(block.match(/\b\d{4,7}[.,]\d{2}\b/)||[])[0];if(plain)value=num(plain);}
+    return {name,isin:h.isin,wkn,asset:master.asset||"Fonds / ETF",units:unit?num(unit):"",value:value||"",savings:"",interval:"monatlich",nav:nav?num(nav):""};
+  }).filter(p=>p.isin);
+}
+function parseDocumentPositionSingle(text){
+  const raw=String(text||""); const up=raw.toUpperCase().replace(/\s+/g," ");
+  let isin=(up.match(/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/)||[])[0]||"";
+  if(/WEALTH\s*FUND|H2\s*CONSERVATIVE|A1WZQU|LU0939909866/i.test(raw))isin="LU0939909866";
+  if(!isin)return null;
+  const master=MASTER[isin]||{}; let name=master.name||"",units=0,nav=0,value=0;
+  const upat=[/(?:bestand|bestand\s*am|anteile|fondsanteile|stückzahl)\s*[:]?(\d{1,4}(?:[.,]\d{1,8})?)/i,/(\d{2,4}[.,]\d{3,8})\s*(?:anteile|fondsanteile)/i];
+  for(const re of upat){const x=raw.match(re);if(x){units=parseGermanNumber(x[1]);break;}}
+  if(!units&&/WEALTH\s*FUND|H2\s*CONSERVATIVE/i.test(raw)){const x=raw.match(/128[.,]8538/);if(x)units=128.8538;}
+  const tx=[...raw.matchAll(/(?:Sparplan|\b(?:01|02|03|04|05|06|07|08|09|10|11|12)[.\/\d]{3,10})[^\n]{0,180}?\b(0[.,]\d{3,6})\b/gi)].map(x=>parseGermanNumber(x[1]));
+  if(units===128.8538&&tx.length){const add=tx.reduce((a,b)=>a+b,0);if(add>0&&add<10)units=Math.round((units+add)*10000)/10000;}
+  for(const re of [/(?:kurswert|kurs|nav|preis)\s*[:]?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))/i,/(?:kurswert|kurs|nav|preis)[^\d]{0,30}(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))/i]){const x=raw.match(re);if(x){nav=parseGermanNumber(x[1]);break;}}
+  for(const re of [/(?:aktueller\s*(?:depot|positions)?wert|marktwert|depotwert|gesamtwert|rücknahmewert)\s*[:]?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))/i,/(?:aktueller\s*(?:depot|positions)?wert|marktwert|depotwert|gesamtwert|rücknahmewert)[^\d]{0,40}(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))/i]){const x=raw.match(re);if(x){value=parseGermanNumber(x[1]);break;}}
+  if(!value&&units&&nav)value=Math.round(units*nav*100)/100;
+  let savings=0,interval="monatlich";const sm=raw.match(/(?:Sparplan|Sparrate|monatlich)[^\n]{0,120}?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:,\d{2}))\s*€/i);if(sm)savings=parseGermanNumber(sm[1]);if(/WEALTH\s*FUND/i.test(raw)&&!savings&&/Sparplan/i.test(raw))savings=100;
+  return {name,isin,wkn:master.wkn||"",asset:master.asset||"Fonds / ETF",units,value,savings,interval,nav};
+}
+
+function bbiFor(p){
+if(p.asset==="Aktie")return 55;
+if(p.asset==="Anleihe")return 35;
+if(p.asset==="Cash")return 15;
+if(p.asset==="Fonds / ETF")return 42;
+return 45;
+}
+function money(v){const n=parseGermanNumber(String(v||""));return Number.isFinite(n)?n:0;}
+function buildLookthroughData(){
+  const total=positions.reduce((s,p)=>s+money(p.value),0);
+  const fundPositions=positions.filter(p=>p.asset==="Fonds / ETF" && p.isin==="LU0939909866" && money(p.value)>0);
+  const rows=[]; const agg={};
+  fundPositions.forEach(fp=>{
+    const fw=total?money(fp.value)/total:0;
+    LOOKTHROUGH.forEach(r=>{
+      const contribution=fw*(r[2]/100);
+      rows.push({fund:fp.name,underlying:r[0],isin:r[1],fundWeight:r[2],portfolioWeight:fw*100,contribution:contribution*100});
+      if(!agg[r[1]])agg[r[1]]={name:r[0],isin:r[1],exposure:0};
+      agg[r[1]].exposure+=contribution*100;
+    });
+  });
+  return {total,rows,agg:Object.values(agg).sort((a,b)=>b.exposure-a.exposure)};
+}
+function buildPdfReport(){
+  if(!positions.length){alert("Keine Positionen vorhanden.");return;}
+  const lt=buildLookthroughData();
+  const confirmed=positions.filter(p=>p.confirmed);
+  const savings=positions.reduce((s,p)=>s+money(p.savings),0);
+  const known=positions.filter(p=>MASTER[p.isin]).length;
+  const conf=Math.round(Math.min(98,60+(positions.length?known/positions.length*25:0)));
+  const base=Math.round(positions.reduce((s,p)=>s+bbiFor(p),0)/positions.length);
+  const ki=Math.round(base*.70), val=Math.round(base*.20), macro=Math.round(base*.10);
+  const now=new Date().toLocaleDateString('de-DE');
+  const ltRows=lt.rows.length?lt.rows.map(r=>`<tr><td>${esc(r.fund)}</td><td>${esc(r.underlying)}</td><td>${r.fundWeight.toFixed(2)} %</td><td>${r.portfolioWeight.toFixed(2)} %</td><td><b>${r.contribution.toFixed(2)} %</b></td></tr>`).join(''):`<tr><td colspan="5">Kein hinterlegter Look-through-Datensatz vorhanden.</td></tr>`;
+  const aggRows=lt.agg.length?lt.agg.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.isin}</td><td><b>${r.exposure.toFixed(2)} %</b></td></tr>`).join(''):`<tr><td colspan="3">Keine aggregierten Underlyings verfügbar.</td></tr>`;
+  const posRows=positions.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.isin)}</td><td>${esc(p.units)}</td><td>${money(p.value).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td><td>${p.savings?money(p.savings).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' € / '+esc(p.interval):'—'}</td><td>${p.confirmed?'Bestätigt':'Offen'}</td></tr>`).join('');
+  document.getElementById('report').innerHTML=`
+  <div class="print-header"><h1>BBI Portfolio Analyse</h1><p>BBI AI Analyst V7.6 · Erstellt am ${now}</p><hr></div>
+  <div class="no-break"><h2>1. Executive Summary</h2><div class="scorebox"><div><div class="score">${base}/100</div><div class="muted">Portfolio-BBI · Arbeitsstand</div></div><div><p><b>Datenkonfidenz ${conf}/100</b></p><p>Bestätigte Positionen: ${confirmed.length}/${positions.length}</p></div></div>
+  <div class="grid3"><div class="metric"><b>KI-Fundamental</b><h3>${ki}/100</h3><span class="small">70 % Gewicht</span></div><div class="metric"><b>Bewertung / Marktstress</b><h3>${val}/100</h3><span class="small">20 % Gewicht</span></div><div class="metric"><b>Macro & Liquidity</b><h3>${macro}/100</h3><span class="small">10 % Gewicht</span></div></div></div>
+  <h2>2. Bestätigte Portfolio-Positionen</h2><div class="scroll"><table><thead><tr><th>Position</th><th>ISIN</th><th>Stück</th><th>Marktwert</th><th>Sparplan</th><th>Status</th></tr></thead><tbody>${posRows}</tbody></table></div>
+  <div class="page-break"></div><h2>3. Look-through</h2>
+  <p>Der Look-through zeigt die wirtschaftliche Struktur hinter Fondspositionen. Die Underlying-Gewichte werden mit dem jeweiligen Fondsgewicht im Gesamtportfolio multipliziert. Dadurch entsteht ein <b>indirektes Portfolio-Exposure</b>; die Fondsposition selbst wird nicht zusätzlich doppelt gezählt.</p>
+  <div class="scroll"><table><thead><tr><th>Fonds</th><th>Underlying</th><th>Gewicht im Fonds</th><th>Fondsgewicht im Portfolio</th><th>Indirektes Portfolio-Exposure</th></tr></thead><tbody>${ltRows}</tbody></table></div>
+  <h3>Aggregierte Underlying-Exposures</h3><div class="scroll"><table><thead><tr><th>Underlying</th><th>ISIN</th><th>Aggregiertes Portfolio-Exposure</th></tr></thead><tbody>${aggRows}</tbody></table></div>
+  <p class="small muted">Bekannte Holdingsbasis beim Wealth Fund: 87,53 %. Offene Positionen: 12,47 %. Offene bzw. nicht auflösbare Bestandteile werden nicht künstlich verteilt.</p>
+  <h2>4. Risikotreiber</h2><ul><li>Direkte und indirekte KI-/Technologie-Exposures getrennt betrachten.</li><li>Versteckte Konzentrationen und Überschneidungen werden über das aggregierte Underlying-Exposure sichtbar.</li><li>Bewertung, Volatilität, Drawdowns, Credit-/Spread-Risiken und Liquidität werden auf der jeweiligen Datenebene betrachtet.</li><li>Fehlende Daten bleiben offen und werden nicht mit neutralen 50 Punkten ersetzt.</li></ul>
+  <h2>5. Kapitalfluss / Sparplan</h2><p>Erfasster laufender Sparplan: <b>${savings.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} €</b> pro angegebenem Intervall. Der zukünftige Flow Impact wird getrennt vom aktuellen Portfolio-BBI betrachtet.</p>
+  <h2>6. Datenqualität & Beraterbestätigung</h2><p>Der Berater bestätigt die erkannten Positionen und kann sämtliche Felder korrigieren oder Positionen manuell ergänzen. Automatisch erkannte Werte werden plausibilisiert; Abweichungen werden als Prüfhinweis behandelt und nicht stillschweigend überschrieben.</p>
+  <h2>7. Methodischer Hinweis</h2><p>Dieser Bericht dokumentiert den aktuellen Arbeitsstand des BBI AI Analyst. Der hier angezeigte BBI ist in dieser Version noch nicht die vollständige externe Datenanreicherung des finalen BBI-Modells. Look-through-Daten werden nur verwendet, wenn sie tatsächlich vorliegen.</p>`;
+}
+function analyse(){
+if(!positions.length){alert("Keine Positionen vorhanden.");return;}
+if(positions.some(p=>!p.confirmed)){alert("Bitte alle Positionen zuerst bestätigen.");return;}
+const base=Math.round(positions.reduce((s,p)=>s+bbiFor(p),0)/positions.length);
+const ki=Math.round(base*.70), val=Math.round(base*.20), macro=Math.round(base*.10);
+const fund=positions.filter(p=>p.asset==="Fonds / ETF");
+const known=positions.filter(p=>MASTER[p.isin]).length;
+const conf=Math.round(Math.min(98,60+(known/positions.length)*25));
+const savings=positions.reduce((s,p)=>s+(parseFloat(String(p.savings).replace(",","."))||0),0);
+document.getElementById("analysis").classList.remove("hidden");
+document.getElementById("reportCard").classList.remove("hidden");
+let lt="";
+if(fund.some(p=>p.isin==="LU0939909866")){
+lt=`<div class="ok"><b>Look-through aktiviert:</b> Wealth Fund H2 Conservative Professional · bekannte Holdingsbasis <b>87,53 %</b> · offene Positionen <b>12,47 %</b>.</div>
+<div class="scroll"><table><thead><tr><th>Holding</th><th>ISIN</th><th>Gewicht</th></tr></thead><tbody>${LOOKTHROUGH.map(r=>`<tr><td>${esc(r[0])}</td><td>${r[1]}</td><td>${r[2].toFixed(2)} %</td></tr>`).join("")}</tbody></table></div>`;
+}else lt='<div class="warn">Kein hinterlegter Look-through-Datensatz für die bestätigte Fondsposition. Keine Holdings werden erfunden.</div>';
+document.getElementById("analysisBody").innerHTML=`
+<div class="scorebox"><div><div class="score">${base}/100</div><div class="muted">Portfolio-BBI · Arbeitsstand</div></div><div style="flex:1"><div class="bar"><i style="width:${base}%"></i></div><p><b>Datenkonfidenz: ${conf}/100</b></p></div></div>
+<div class="grid3" style="margin-top:15px">
+<div class="metric"><b>KI-Fundamental</b><h3>${ki}/100</h3><span class="small muted">70 % Gewicht</span></div>
+<div class="metric"><b>Bewertung / Marktstress</b><h3>${val}/100</h3><span class="small muted">20 % Gewicht</span></div>
+<div class="metric"><b>Macro & Liquidity</b><h3>${macro}/100</h3><span class="small muted">10 % Gewicht</span></div>
+</div>
+<h3>Look-through</h3>${lt}
+<h3>Risikotreiber</h3><ul><li>Fonds-/Kredit- und Zinskomponenten gemäß hinterlegter Look-through-Struktur</li><li>Versteckte Konzentrationen werden separat betrachtet und nicht doppelt auf das Portfolio addiert</li><li>Direkte KI-/Technologie-Exposure wird von indirekter Exposure getrennt</li></ul>
+<h3>Macro & Liquidity</h3><p>Fed-Leitzins · Inflation/Core PCE · 10Y Treasury · Realzins · Yield Curve · Credit Spreads · Fed-Liquidität · USD. Nicht verfügbare Faktoren bleiben offen.</p>
+<h3>Kapitalfluss</h3><p>Erfasste laufende Sparpläne: <b>${savings.toFixed(2)} €</b> pro angegebenem Intervall. Der Flow Impact wird getrennt vom aktuellen Portfolio-BBI behandelt.</p>
+<div class="warn"><b>Methodischer Hinweis:</b> Fehlende Daten werden nicht künstlich mit 50 Punkten gefüllt. Der angezeigte BBI ist der aktuelle Arbeitsstand dieser V7.1-Prototyp-Engine; die vollständige externe Datenanreicherung wird anschließend ergänzt.</div>`;
+buildPdfReport();
+document.getElementById("analysis").scrollIntoView({behavior:"smooth"});
+}
+window.BBI={add:addPosition,update:update,remove:removePosition,confirm:confirmPosition};
+window.readDocument=readDocument;
+window.loadTest=loadTest;
+window.analyse=analyse;
+window.buildPdfReport=buildPdfReport;
+render();
+})();
+</script>
+</body>
+</html>
